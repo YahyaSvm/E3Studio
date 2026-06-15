@@ -1,0 +1,13 @@
+{
+  "name": "e3studio",
+  "version": "0.1.0",
+  "dependencies": [
+    "opencascade",
+    "boost-system",
+    "boost-filesystem",
+    "boost-thread",
+    "nlohmann-json",
+    "ixwebsocket",
+    "spdlog"
+  ]
+}

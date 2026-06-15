@@ -1,0 +1,311 @@
+<Window x:Class="E3Studio.Dialogs.PostProcessorDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Post Processor Manager"
+        Height="650" Width="900"
+        Background="{StaticResource BgCardBrush}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="36" CornerRadius="12" GlassFrameThickness="0" ResizeBorderThickness="0"/>
+    </WindowChrome.WindowChrome>
+    
+    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="36"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="60"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Title Bar -->
+            <Border Grid.Row="0" Background="{StaticResource BgCardBrush}" CornerRadius="12,12,0,0">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0">
+                        <Border Width="20" Height="20" CornerRadius="4" Background="{StaticResource AccentGradient}" Margin="0,0,8,0">
+                            <Path Data="M12,3 L14,9 L10,9 Z M11,9 L11,21 M9,21 L13,21" 
+                                  Stroke="#0D0D0F" StrokeThickness="1.2" Fill="Transparent" 
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Post Processor Manager" 
+                                   Foreground="{StaticResource TextBrush}" 
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Text=" — " Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Configure G-Code output" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    
+                    <Button HorizontalAlignment="Right" 
+                            Width="36" Height="36"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            Click="Close_Click"
+                            Cursor="Hand"
+                            Background="Transparent" 
+                            BorderThickness="0">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="0,12,0,0">
+                                                <Path x:Name="icon" Data="M8,8 L16,16 M16,8 L8,16" Stroke="{StaticResource TextMidBrush}" StrokeThickness="1.5"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bg" Property="Background" Value="{StaticResource AccentRedBrush}"/>
+                                                    <Setter TargetName="icon" Property="Stroke" Value="White"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+            
+            <!-- Content -->
+            <Grid Grid.Row="1" Margin="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Post Processor List -->
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Text="POST PROCESSORS" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                    
+                    <Border Grid.Row="1" Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                        <ListBox x:Name="PostProcessorList" 
+                                 Background="Transparent" 
+                                 BorderThickness="0"
+                                 SelectionChanged="PostProcessorList_SelectionChanged">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource ListBoxItemModern}"/>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </Border>
+                    
+                    <!-- List Actions -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="+ New" Style="{StaticResource BtnSecondary}" Padding="14,6" Margin="0,0,6,0" Click="AddPostProcessor_Click"/>
+                        <Button Content="Import" Style="{StaticResource BtnGhost}" Padding="10,6" Margin="0,0,6,0" Click="ImportPostProcessor_Click"/>
+                        <Button Content="Delete" Style="{StaticResource BtnGhost}" Padding="10,6" Click="DeletePostProcessor_Click" Foreground="{StaticResource AccentDangerBrush}"/>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- Post Processor Details -->
+                <Border Grid.Column="2" Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="20">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Basic Info -->
+                            <TextBlock Text="BASIC INFO" Style="{StaticResource TextLabel}" Margin="0,0,0,12"/>
+                            
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Name" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtName" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Version" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtVersion" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="Description" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtDescription" Style="{StaticResource InputText}" Height="50" AcceptsReturn="True" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Machine Type" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <ComboBox x:Name="CmbMachineType" SelectedIndex="0">
+                                        <ComboBoxItem Content="Mill"/>
+                                        <ComboBoxItem Content="Lathe"/>
+                                        <ComboBoxItem Content="Router"/>
+                                        <ComboBoxItem Content="Plasma"/>
+                                        <ComboBoxItem Content="Laser"/>
+                                        <ComboBoxItem Content="Waterjet"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Controller" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtController" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <!-- G-Code Settings -->
+                            <TextBlock Text="G-CODE FORMAT" Style="{StaticResource TextLabel}" Margin="0,8,0,12"/>
+                            
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="File Extension" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtFileExtension" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="2">
+                                    <CheckBox x:Name="ChkLineNumbers" Content="Use Line Numbers" Margin="0,20,0,0" Foreground="{StaticResource TextBrush}"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <StackPanel Margin="0,0,0,12">
+                                <CheckBox x:Name="ChkG54" Content="Use G54 Work Coordinate" Margin="0,4" Foreground="{StaticResource TextBrush}"/>
+                                <CheckBox x:Name="ChkG90" Content="Use G90 Absolute Positioning" Margin="0,4" Foreground="{StaticResource TextBrush}"/>
+                                <CheckBox x:Name="ChkG21" Content="Use G21 Metric Units (mm)" Margin="0,4" Foreground="{StaticResource TextBrush}"/>
+                            </StackPanel>
+                            
+                            <!-- Tool Change -->
+                            <TextBlock Text="TOOL CHANGE" Style="{StaticResource TextLabel}" Margin="0,8,0,12"/>
+                            
+                            <StackPanel Margin="0,0,0,12">
+                                <CheckBox x:Name="ChkToolChange" Content="Support Tool Change" Margin="0,4" Foreground="{StaticResource TextBrush}"/>
+                            </StackPanel>
+                            
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Tool Change Command" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtToolChangeCmd" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Spindle Warmup (sec)" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtSpindleWarmup" Style="{StaticResource InputNumber}"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <!-- Coolant -->
+                            <TextBlock Text="COOLANT" Style="{StaticResource TextLabel}" Margin="0,8,0,12"/>
+                            
+                            <StackPanel Margin="0,0,0,12">
+                                <CheckBox x:Name="ChkCoolant" Content="Support Coolant" Margin="0,4" Foreground="{StaticResource TextBrush}"/>
+                            </StackPanel>
+                            
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Coolant ON Command" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtCoolantOn" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Coolant OFF Command" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtCoolantOff" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <!-- Spindle -->
+                            <TextBlock Text="SPINDLE" Style="{StaticResource TextLabel}" Margin="0,8,0,12"/>
+                            
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="CW Command" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtSpindleCw" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="CCW Command" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtSpindleCcw" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="STOP Command" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtSpindleStop" Style="{StaticResource InputText}"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <!-- Program End -->
+                            <TextBlock Text="PROGRAM END" Style="{StaticResource TextLabel}" Margin="0,8,0,12"/>
+                            
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="Program End Command" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtProgramEnd" Style="{StaticResource InputText}" Width="150" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                            
+                            <!-- Custom Header/Footer -->
+                            <TextBlock Text="CUSTOM G-CODE" Style="{StaticResource TextLabel}" Margin="0,8,0,12"/>
+                            
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="Header G-Code (executed at start)" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtHeader" Style="{StaticResource InputText}" Height="60" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="{StaticResource MonoFont}" FontSize="10"/>
+                            </StackPanel>
+                            
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="Footer G-Code (executed at end)" Foreground="{StaticResource TextMidBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtFooter" Style="{StaticResource InputText}" Height="60" AcceptsReturn="True" TextWrapping="Wrap" FontFamily="{StaticResource MonoFont}" FontSize="10"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+            
+            <!-- Footer Buttons -->
+            <Border Grid.Row="2" BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}">
+                <Grid Margin="16,0">
+                    <Button Content="Export Selected..." Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" VerticalAlignment="Center" Click="ExportPostProcessor_Click"/>
+                    
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Content="Apply" Style="{StaticResource BtnPrimary}" Width="100" Margin="0,0,8,0" Click="Apply_Click"/>
+                        <Button Content="Close" Style="{StaticResource BtnSecondary}" Width="100" Click="Close_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,175 @@
+<UserControl x:Class="E3Studio.Controls.ToolpathListPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="400" d:DesignWidth="280">
+    <UserControl.Resources>
+        <Style x:Key="ToolpathItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#DCDCDC"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#007ACC"/>
+                                <Setter Property="BorderBrush" Value="#1E90FF"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#3E3E42"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    
+    <Grid Background="#252526">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2D2D30" Padding="10,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Text="Toolpaths" FontWeight="SemiBold" FontSize="14" 
+                           Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="BtnExpandAll" ToolTip="Expand All" 
+                            Width="24" Height="24" Margin="2,0"
+                            Background="Transparent" BorderThickness="0"
+                            Click="BtnExpandAll_Click">
+                        <Path Data="M0,0 L6,6 L12,0" Stroke="#AAAAAA" StrokeThickness="1.5"/>
+                    </Button>
+                    <Button x:Name="BtnCollapseAll" ToolTip="Collapse All"
+                            Width="24" Height="24" Margin="2,0"
+                            Background="Transparent" BorderThickness="0"
+                            Click="BtnCollapseAll_Click">
+                        <Path Data="M0,6 L6,0 L12,6" Stroke="#AAAAAA" StrokeThickness="1.5"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Toolpath List -->
+        <ListBox x:Name="ToolpathList" Grid.Row="1" 
+                 Background="Transparent" BorderThickness="0"
+                 ItemContainerStyle="{StaticResource ToolpathItemStyle}"
+                 SelectionMode="Extended"
+                 SelectionChanged="ToolpathList_SelectionChanged"
+                 AllowDrop="True"
+                 PreviewMouseMove="ToolpathList_PreviewMouseMove"
+                 Drop="ToolpathList_Drop">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- Visibility Toggle -->
+                        <CheckBox Grid.Column="0" IsChecked="{Binding IsVisible}" 
+                                  VerticalAlignment="Center" Margin="0,0,8,0"
+                                  Checked="Visibility_Changed" Unchecked="Visibility_Changed"/>
+                        
+                        <!-- Icon -->
+                        <Border Grid.Column="1" Width="24" Height="24" 
+                                Background="{Binding IconColor}" CornerRadius="4"
+                                Margin="0,0,8,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding TypeIcon}" FontSize="12"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="White"/>
+                        </Border>
+                        
+                        <!-- Name and Info -->
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Name}" FontWeight="Medium"
+                                       Foreground="#FFFFFF"/>
+                            <TextBlock Foreground="#888888" FontSize="11">
+                                <Run Text="{Binding ToolName}"/>
+                                <Run Text=" • "/>
+                                <Run Text="{Binding DepthInfo}"/>
+                            </TextBlock>
+                        </StackPanel>
+                        
+                        <!-- Status Icons -->
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Background="#10B981" CornerRadius="8" 
+                                    Padding="6,2" Margin="4,0"
+                                    Visibility="{Binding IsCalculated, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="✓" Foreground="White" FontSize="10"/>
+                            </Border>
+                            <TextBlock Text="⋮" Foreground="#888888" FontSize="14" 
+                                       VerticalAlignment="Center" Cursor="Hand"
+                                       MouseLeftButtonDown="ContextMenu_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        
+        <!-- Action Buttons -->
+        <Border Grid.Row="2" Background="#2D2D30" Padding="8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <Button Grid.Column="0" Content="Add" Margin="2" Padding="8,4"
+                        Background="#0E639C" Foreground="White" BorderThickness="0"
+                        Click="BtnAdd_Click">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#1177BB"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                
+                <Button Grid.Column="1" Content="Edit" Margin="2" Padding="8,4"
+                        Background="#3F3F46" Foreground="White" BorderThickness="0"
+                        Click="BtnEdit_Click"/>
+                
+                <Button Grid.Column="2" Content="↑↓" Margin="2" Padding="8,4"
+                        Background="#3F3F46" Foreground="White" BorderThickness="0"
+                        ToolTip="Reorder" Click="BtnReorder_Click"/>
+                
+                <Button Grid.Column="3" Content="Del" Margin="2" Padding="8,4"
+                        Background="#D32F2F" Foreground="White" BorderThickness="0"
+                        Click="BtnDelete_Click"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

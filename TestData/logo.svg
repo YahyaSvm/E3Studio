@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="300" viewBox="0 0 1000 300">
+  <path id="Path_1" d="M 50,50 L 150,50 L 150,75 L 80,75 L 80,110 L 140,110 L 140,135 L 80,135 L 80,175 L 150,175 L 150,200 L 50,200 Z" fill="none" stroke="black" stroke-width="2"/>
+
+  <path id="Path_2" d="M 200,50 L 300,50 L 300,75 L 230,75 L 230,110 L 280,110 L 280,135 L 230,135 L 230,175 L 300,175 L 300,200 L 200,200 Z" fill="none" stroke="black" stroke-width="2"/>
+
+  <path id="Path_3" d="M 450,50 L 350,50 L 350,200 L 450,200 L 450,175 L 380,175 L 380,75 L 450,75 Z" fill="none" stroke="black" stroke-width="2"/>
+
+  <path id="Path_4" d="M 500,200 L 500,50 L 530,50 L 570,160 L 570,50 L 600,50 L 600,200 L 570,200 L 530,90 L 530,200 Z" fill="none" stroke="black" stroke-width="2"/>
+
+  <path id="Path_5" d="M 750,50 L 650,50 L 650,200 L 750,200 L 750,175 L 680,175 L 680,75 L 750,75 Z" fill="none" stroke="black" stroke-width="2"/>
+</svg>

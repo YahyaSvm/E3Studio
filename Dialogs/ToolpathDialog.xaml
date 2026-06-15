@@ -1,0 +1,442 @@
+<Window x:Class="E3Studio.Dialogs.ToolpathDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Create Toolpath"
+        Height="780" Width="520"
+        Background="{StaticResource BgCardBrush}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="36" CornerRadius="12" GlassFrameThickness="0" ResizeBorderThickness="0"/>
+    </WindowChrome.WindowChrome>
+    
+    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="36"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="60"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Title Bar -->
+            <Border Grid.Row="0" Background="{StaticResource BgCardBrush}" CornerRadius="12,12,0,0">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" Margin="16,0">
+                        <TextBlock x:Name="TitleText" Text="Create Profile Toolpath" 
+                                   Foreground="{StaticResource TextBrush}" 
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    
+                    <Button HorizontalAlignment="Right" Width="36" Height="36"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            Click="Close_Click" Cursor="Hand"
+                            Background="Transparent" BorderThickness="0">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="0,12,0,0">
+                                                <Path x:Name="icon" Data="M8,8 L16,16 M16,8 L8,16" Stroke="{StaticResource TextMidBrush}" StrokeThickness="1.5"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bg" Property="Background" Value="{StaticResource AccentRedBrush}"/>
+                                                    <Setter TargetName="icon" Property="Stroke" Value="White"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+            
+            <!-- Content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="20">
+                    
+                    <!-- Toolpath Type -->
+                    <TextBlock Text="TOOLPATH TYPE" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <RadioButton x:Name="TypeProfile" Grid.Column="0" GroupName="ToolpathType" IsChecked="True"
+                                    Content="Profile" Style="{StaticResource {x:Type ToggleButton}}"
+                                    Background="{StaticResource BgBaseBrush}" Margin="0,0,4,0" Padding="12,10"
+                                    Checked="ToolpathType_Changed"/>
+                        <RadioButton x:Name="TypePocket" Grid.Column="1" GroupName="ToolpathType"
+                                    Content="Pocket" Style="{StaticResource {x:Type ToggleButton}}"
+                                    Background="{StaticResource BgBaseBrush}" Margin="4,0" Padding="12,10"
+                                    Checked="ToolpathType_Changed"/>
+                        <RadioButton x:Name="TypeDrill" Grid.Column="2" GroupName="ToolpathType"
+                                    Content="Drill" Style="{StaticResource {x:Type ToggleButton}}"
+                                    Background="{StaticResource BgBaseBrush}" Margin="4,0,0,0" Padding="12,10"
+                                    Checked="ToolpathType_Changed"/>
+                    </Grid>
+                    
+                    <!-- Toolpath Name -->
+                    <TextBlock Text="NAME" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                    <TextBox x:Name="TxtName" Style="{StaticResource InputText}" Text="Profile 1" Margin="0,0,0,16"/>
+                    
+                    <!-- Tool Selection -->
+                    <TextBlock Text="TOOL" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <ComboBox x:Name="CmbTool" SelectedIndex="0" SelectionChanged="Tool_SelectionChanged">
+                            <ComboBoxItem Content="Flat Endmill 3.175mm (1/8&quot;) - 2F"/>
+                            <ComboBoxItem Content="Flat Endmill 6mm - 2F"/>
+                            <ComboBoxItem Content="Ball Nose 3.175mm - 2F"/>
+                            <ComboBoxItem Content="V-Bit 60° 6mm - 1F"/>
+                        </ComboBox>
+                        
+                        <Button Grid.Column="1" Content="🔧" Style="{StaticResource BtnGhost}" 
+                                Width="36" Margin="8,0,0,0" ToolTip="Open Tool Library"/>
+                    </Grid>
+                    
+                    <!-- Profile Side (only for Profile type) -->
+                    <StackPanel x:Name="ProfileOptions">
+                        <TextBlock Text="CUT SIDE" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <RadioButton x:Name="SideOutside" Grid.Column="0" GroupName="CutSide" IsChecked="True"
+                                        Content="Outside" Style="{StaticResource {x:Type ToggleButton}}"
+                                        Background="{StaticResource BgBaseBrush}" Margin="0,0,4,0" Padding="8,8"/>
+                            <RadioButton x:Name="SideInside" Grid.Column="1" GroupName="CutSide"
+                                        Content="Inside" Style="{StaticResource {x:Type ToggleButton}}"
+                                        Background="{StaticResource BgBaseBrush}" Margin="4,0" Padding="8,8"/>
+                            <RadioButton x:Name="SideOnLine" Grid.Column="2" GroupName="CutSide"
+                                        Content="On Line" Style="{StaticResource {x:Type ToggleButton}}"
+                                        Background="{StaticResource BgBaseBrush}" Margin="4,0,0,0" Padding="8,8"/>
+                        </Grid>
+                    </StackPanel>
+                    
+                    <!-- Pocket Options (only for Pocket type) -->
+                    <StackPanel x:Name="PocketOptions" Visibility="Collapsed">
+                        <TextBlock Text="STEPOVER" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="60"/>
+                            </Grid.ColumnDefinitions>
+                            <Slider x:Name="SliderStepover" Minimum="10" Maximum="80" Value="40" 
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                <Run Text="{Binding ElementName=SliderStepover, Path=Value, StringFormat={}{0:F0}}"/>
+                                <Run Text="%"/>
+                            </TextBlock>
+                        </Grid>
+                    </StackPanel>
+                    
+                    <!-- Depth Settings -->
+                    <TextBlock Text="DEPTH SETTINGS" Style="{StaticResource TextLabel}" Margin="0,0,0,12"/>
+                    <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}" 
+                            BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="0">
+                                <TextBlock Text="Start Depth (Z)" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtStartDepth" Style="{StaticResource InputNumber}" Text="0"/>
+                                    <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="2">
+                                <TextBlock Text="Final Depth" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtFinalDepth" Style="{StaticResource InputNumber}" Text="10"/>
+                                    <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="2" Grid.Column="0">
+                                <TextBlock Text="Depth per Pass" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtDepthPerPass" Style="{StaticResource InputNumber}" Text="2"/>
+                                    <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="2" Grid.Column="2">
+                                <TextBlock Text="Passes Required" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <TextBlock x:Name="TxtPassCount" Text="5 passes" Foreground="{StaticResource AccentBrush}" 
+                                          FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Feed Rates -->
+                    <TextBlock Text="FEED RATES" Style="{StaticResource TextLabel}" Margin="0,0,0,12"/>
+                    <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}" 
+                            BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="0">
+                                <TextBlock Text="Feed Rate (XY)" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtFeedRate" Style="{StaticResource InputNumber}" Text="800"/>
+                                    <TextBlock Text="mm/min" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="2">
+                                <TextBlock Text="Plunge Rate (Z)" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtPlungeRate" Style="{StaticResource InputNumber}" Text="200"/>
+                                    <TextBlock Text="mm/min" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3">
+                                <TextBlock Text="Spindle Speed" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtSpindleRPM" Style="{StaticResource InputNumber}" Text="12000"/>
+                                    <TextBlock Text="RPM" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Tabs (for Profile) -->
+                    <StackPanel x:Name="TabOptions">
+                        <TextBlock Text="HOLDING TABS" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox x:Name="ChkEnableTabs" Content="Enable Tabs" IsChecked="True" 
+                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Tab Count" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtTabCount" Style="{StaticResource InputNumber}" Text="4"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Tab Width" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtTabWidth" Style="{StaticResource InputNumber}" Text="5"/>
+                                    <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Tab Height" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtTabHeight" Style="{StaticResource InputNumber}" Text="2"/>
+                                    <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                    
+                    <!-- Entry Mode (Advanced) -->
+                    <StackPanel x:Name="EntryOptions">
+                        <TextBlock Text="ENTRY MODE" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <RadioButton x:Name="EntryPlunge" Grid.Column="0" GroupName="EntryMode" IsChecked="True"
+                                        Content="Plunge" Style="{StaticResource {x:Type ToggleButton}}"
+                                        Background="{StaticResource BgBaseBrush}" Margin="0,0,4,0" Padding="8,8"/>
+                            <RadioButton x:Name="EntryRamp" Grid.Column="1" GroupName="EntryMode"
+                                        Content="Ramp" Style="{StaticResource {x:Type ToggleButton}}"
+                                        Background="{StaticResource BgBaseBrush}" Margin="4,0" Padding="8,8"/>
+                            <RadioButton x:Name="EntryHelix" Grid.Column="2" GroupName="EntryMode"
+                                        Content="Helix" Style="{StaticResource {x:Type ToggleButton}}"
+                                        Background="{StaticResource BgBaseBrush}" Margin="4,0,0,0" Padding="8,8"/>
+                        </Grid>
+                        
+                        <!-- Entry Parameters -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Helix Diameter" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtHelixDiameter" Style="{StaticResource InputNumber}" Text="5"/>
+                                    <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Ramp Angle" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtRampAngle" Style="{StaticResource InputNumber}" Text="3"/>
+                                    <TextBlock Text="°" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                    
+                    <!-- Lead-In / Lead-Out -->
+                    <StackPanel x:Name="LeadOptions">
+                        <TextBlock Text="LEAD-IN / LEAD-OUT" Style="{StaticResource TextLabel}" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="0">
+                                <TextBlock Text="Lead-In Type" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="CmbLeadInType" SelectedIndex="0">
+                                    <ComboBoxItem Content="None"/>
+                                    <ComboBoxItem Content="Line"/>
+                                    <ComboBoxItem Content="Arc"/>
+                                    <ComboBoxItem Content="Tangent Arc"/>
+                                </ComboBox>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="2">
+                                <TextBlock Text="Lead-In Radius" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtLeadInRadius" Style="{StaticResource InputNumber}" Text="3"/>
+                                    <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                </Grid>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="2" Grid.Column="0">
+                                <TextBlock Text="Lead-Out Type" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="CmbLeadOutType" SelectedIndex="0">
+                                    <ComboBoxItem Content="None"/>
+                                    <ComboBoxItem Content="Line"/>
+                                    <ComboBoxItem Content="Arc"/>
+                                    <ComboBoxItem Content="Tangent Arc"/>
+                                </ComboBox>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Row="2" Grid.Column="2">
+                                <TextBlock Text="Lead-Out Radius" Foreground="{StaticResource TextMutedBrush}" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtLeadOutRadius" Style="{StaticResource InputNumber}" Text="3"/>
+                                    <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" FontSize="10" 
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                    
+                    <!-- Arc Fitting -->
+                    <StackPanel x:Name="ArcFittingOptions">
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox x:Name="ChkArcFitting" Content="Enable Arc Fitting (G2/G3)" IsChecked="True" 
+                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <TextBlock Text="Tolerance:" Foreground="{StaticResource TextMutedBrush}" 
+                                          FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBox x:Name="TxtArcTolerance" Style="{StaticResource InputNumber}" 
+                                        Text="0.01" Width="60"/>
+                                <TextBlock Text="mm" Foreground="{StaticResource TextMutedBrush}" 
+                                          FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                    
+                </StackPanel>
+            </ScrollViewer>
+            
+            <!-- Footer Buttons -->
+            <Border Grid.Row="2" Background="{StaticResource BgBaseBrush}" CornerRadius="0,0,12,12" Padding="16,12">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <TextBlock x:Name="TxtSelectedPaths" Text="0 paths selected" 
+                                  Foreground="{StaticResource TextMutedBrush}" 
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+                    
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Style="{StaticResource BtnSecondary}" 
+                                Padding="20,8" Margin="0,0,8,0" Click="Cancel_Click"/>
+                        <Button Content="Create Toolpath" Style="{StaticResource BtnPrimary}" 
+                                Padding="20,8" Click="Create_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

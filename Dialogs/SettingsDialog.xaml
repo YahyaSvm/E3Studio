@@ -1,0 +1,397 @@
+<Window x:Class="E3Studio.Dialogs.SettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Settings - E3Studio"
+        Height="700" Width="900"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E2E"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize">
+    
+    <Window.Resources>
+        <Style x:Key="TabItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#A0A0A0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" 
+                                Padding="{TemplateBinding Padding}" CornerRadius="6">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#2A2A3E"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#00D4AA20"/>
+                                <Setter Property="Foreground" Value="#00D4AA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#00D4AA"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+        
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#B0B0B0"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+        
+        <Style x:Key="InputField" TargetType="TextBox">
+            <Setter Property="Background" Value="#252536"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderBrush" Value="#3A3A4E"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="CaretBrush" Value="#00D4AA"/>
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#00D4AA"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style x:Key="ComboStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+    </Window.Resources>
+    
+    <Border Background="#1E1E2E" BorderBrush="#3A3A4E" BorderThickness="1" CornerRadius="10">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="60"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Title Bar -->
+            <Border Grid.Row="0" Background="#252536" CornerRadius="10,10,0,0" MouseLeftButtonDown="TitleBar_MouseDown">
+                <Grid>
+                    <TextBlock Text="⚙️ Settings" FontSize="16" FontWeight="SemiBold" 
+                               Foreground="#E0E0E0" VerticalAlignment="Center" Margin="20,0"/>
+                    <Button Content="✕" HorizontalAlignment="Right" Margin="10" 
+                            Width="30" Height="30" Click="Close_Click"
+                            Background="Transparent" Foreground="#808080" BorderThickness="0"
+                            FontSize="14" Cursor="Hand"/>
+                </Grid>
+            </Border>
+            
+            <!-- Content -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Sidebar -->
+                <Border Grid.Column="0" Background="#252536" Padding="10">
+                    <ListBox x:Name="TabList" Background="Transparent" BorderThickness="0"
+                             SelectionChanged="TabList_SelectionChanged" SelectedIndex="0">
+                        <ListBox.ItemContainerStyle>
+                            <Style BasedOn="{StaticResource TabItemStyle}" TargetType="ListBoxItem"/>
+                        </ListBox.ItemContainerStyle>
+                        <ListBoxItem Content="🖥️  Machine" Tag="Machine"/>
+                        <ListBoxItem Content="📐  G-Code" Tag="GCode"/>
+                        <ListBoxItem Content="🔧  Toolpath Defaults" Tag="Toolpath"/>
+                        <ListBoxItem Content="🎨  Interface" Tag="Interface"/>
+                        <ListBoxItem Content="💾  Files" Tag="Files"/>
+                    </ListBox>
+                </Border>
+                
+                <!-- Settings Panels -->
+                <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="30">
+                    <Grid>
+                        <!-- Machine Panel -->
+                        <StackPanel x:Name="MachinePanel" Visibility="Visible">
+                            <TextBlock Text="Machine Configuration" Style="{StaticResource SectionTitle}"/>
+                            
+                            <TextBlock Text="SELECT MACHINE" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="CmbMachine" Style="{StaticResource ComboStyle}" 
+                                      Margin="0,0,0,20" SelectionChanged="CmbMachine_SelectionChanged"/>
+                            
+                            <Border Background="#252536" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,15">
+                                        <TextBlock Text="MANUFACTURER" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="TxtManufacturer" Style="{StaticResource InputField}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,15">
+                                        <TextBlock Text="MODEL" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="TxtModel" Style="{StaticResource InputField}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
+                                        <TextBlock Text="WORK AREA X (mm)" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="TxtMaxX" Style="{StaticResource InputField}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">
+                                        <TextBlock Text="WORK AREA Y (mm)" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="TxtMaxY" Style="{StaticResource InputField}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,10,15">
+                                        <TextBlock Text="WORK AREA Z (mm)" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="TxtMaxZ" Style="{StaticResource InputField}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="10,0,0,15">
+                                        <TextBlock Text="MAX SPINDLE RPM" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="TxtMaxRPM" Style="{StaticResource InputField}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,10,15">
+                                        <TextBlock Text="MAX FEED RATE (mm/min)" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="TxtMaxFeed" Style="{StaticResource InputField}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="3" Grid.Column="1" Margin="10,0,0,15">
+                                        <TextBlock Text="POST PROCESSOR" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="TxtPostProcessor" Style="{StaticResource InputField}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Orientation="Horizontal">
+                                        <CheckBox x:Name="ChkToolChanger" Content="Has Tool Changer" Foreground="#B0B0B0" 
+                                                  IsEnabled="False" Margin="0,0,20,0"/>
+                                        <CheckBox x:Name="ChkCoolant" Content="Has Coolant" Foreground="#B0B0B0" 
+                                                  IsEnabled="False" Margin="0,0,20,0"/>
+                                        <CheckBox x:Name="ChkProbe" Content="Has Probe" Foreground="#B0B0B0" 
+                                                  IsEnabled="False"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                            <TextBlock Text="SAFE HEIGHTS" Style="{StaticResource SectionTitle}" Margin="0,10,0,16"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                    <TextBlock Text="SAFE Z (mm)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="TxtSafeZ" Style="{StaticResource InputField}" Text="25.0"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="1" Margin="10,0,10,0">
+                                    <TextBlock Text="RAPID CLEARANCE (mm)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="TxtRapidClearance" Style="{StaticResource InputField}" Text="5.0"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="2" Margin="10,0,0,0">
+                                    <TextBlock Text="TOOL CHANGE Z (mm)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="TxtToolChangeZ" Style="{StaticResource InputField}" Text="50.0"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                        
+                        <!-- G-Code Panel -->
+                        <StackPanel x:Name="GCodePanel" Visibility="Collapsed">
+                            <TextBlock Text="G-Code Output Settings" Style="{StaticResource SectionTitle}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,15">
+                                    <TextBlock Text="FILE EXTENSION" Style="{StaticResource FieldLabel}"/>
+                                    <ComboBox x:Name="CmbFileExtension" Style="{StaticResource ComboStyle}">
+                                        <ComboBoxItem Content=".nc" IsSelected="True"/>
+                                        <ComboBoxItem Content=".ngc"/>
+                                        <ComboBoxItem Content=".gcode"/>
+                                        <ComboBoxItem Content=".tap"/>
+                                        <ComboBoxItem Content=".cnc"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,15">
+                                    <TextBlock Text="DECIMAL PLACES" Style="{StaticResource FieldLabel}"/>
+                                    <ComboBox x:Name="CmbDecimals" Style="{StaticResource ComboStyle}">
+                                        <ComboBoxItem Content="2"/>
+                                        <ComboBoxItem Content="3" IsSelected="True"/>
+                                        <ComboBoxItem Content="4"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
+                                    <TextBlock Text="LINE ENDING" Style="{StaticResource FieldLabel}"/>
+                                    <ComboBox x:Name="CmbLineEnding" Style="{StaticResource ComboStyle}">
+                                        <ComboBoxItem Content="Windows (CRLF)" IsSelected="True"/>
+                                        <ComboBoxItem Content="Unix (LF)"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">
+                                    <TextBlock Text="SPINDLE WARMUP (sec)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="TxtSpindleWarmup" Style="{StaticResource InputField}" Text="3.0"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <TextBlock Text="OPTIONS" Style="{StaticResource SectionTitle}" Margin="0,20,0,16"/>
+                            <WrapPanel>
+                                <CheckBox x:Name="ChkLineNumbers" Content="Include Line Numbers" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10"/>
+                                <CheckBox x:Name="ChkComments" Content="Include Comments" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10" IsChecked="True"/>
+                                <CheckBox x:Name="ChkCannedCycles" Content="Use Canned Drill Cycles" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10" IsChecked="True"/>
+                                <CheckBox x:Name="ChkToolLengthComp" Content="Tool Length Compensation" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10" IsChecked="True"/>
+                                <CheckBox x:Name="ChkUseCoolant" Content="Enable Coolant" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10"/>
+                                <CheckBox x:Name="ChkArcsAsArcs" Content="Output Arcs as G2/G3" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10" IsChecked="True"/>
+                            </WrapPanel>
+                        </StackPanel>
+                        
+                        <!-- Toolpath Defaults Panel -->
+                        <StackPanel x:Name="ToolpathPanel" Visibility="Collapsed">
+                            <TextBlock Text="Default Toolpath Settings" Style="{StaticResource SectionTitle}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,15">
+                                    <TextBlock Text="FEED RATE (mm/min)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="TxtDefaultFeed" Style="{StaticResource InputField}" Text="800"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,15">
+                                    <TextBlock Text="PLUNGE RATE (mm/min)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="TxtDefaultPlunge" Style="{StaticResource InputField}" Text="200"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
+                                    <TextBlock Text="SPINDLE RPM" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="TxtDefaultRPM" Style="{StaticResource InputField}" Text="12000"/>
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">
+                                    <TextBlock Text="DEPTH PER PASS (mm)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="TxtDefaultDepth" Style="{StaticResource InputField}" Text="2.0"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                        
+                        <!-- Interface Panel -->
+                        <StackPanel x:Name="InterfacePanel" Visibility="Collapsed">
+                            <TextBlock Text="Interface Preferences" Style="{StaticResource SectionTitle}"/>
+                            
+                            <Grid>
+                                <StackPanel Margin="0,0,10,15">
+                                    <TextBlock Text="DEFAULT UNITS" Style="{StaticResource FieldLabel}"/>
+                                    <ComboBox x:Name="CmbUnits" Style="{StaticResource ComboStyle}">
+                                        <ComboBoxItem Content="Millimeters (mm)" IsSelected="True"/>
+                                        <ComboBoxItem Content="Inches (in)"/>
+                                    </ComboBox>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <TextBlock Text="DISPLAY OPTIONS" Style="{StaticResource SectionTitle}" Margin="0,20,0,16"/>
+                            <WrapPanel>
+                                <CheckBox x:Name="ChkShowGrid" Content="Show Grid" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10" IsChecked="True"/>
+                                <CheckBox x:Name="ChkShowRulers" Content="Show Rulers" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10" IsChecked="True"/>
+                                <CheckBox x:Name="ChkShowOrigin" Content="Show Origin" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10" IsChecked="True"/>
+                                <CheckBox x:Name="ChkSnapToGrid" Content="Snap to Grid" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10"/>
+                                <CheckBox x:Name="ChkAutoFit" Content="Auto-Fit on Import" 
+                                          Foreground="#B0B0B0" Margin="0,0,20,10" IsChecked="True"/>
+                            </WrapPanel>
+                        </StackPanel>
+                        
+                        <!-- Files Panel -->
+                        <StackPanel x:Name="FilesPanel" Visibility="Collapsed">
+                            <TextBlock Text="File Settings" Style="{StaticResource SectionTitle}"/>
+                            
+                            <CheckBox x:Name="ChkAutoSave" Content="Enable Auto-Save" 
+                                      Foreground="#B0B0B0" Margin="0,0,0,15" IsChecked="True"/>
+                            
+                            <StackPanel Margin="0,0,0,20">
+                                <TextBlock Text="AUTO-SAVE INTERVAL (minutes)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="TxtAutoSaveInterval" Style="{StaticResource InputField}" 
+                                         Text="5" Width="100" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                            
+                            <TextBlock Text="RECENT PROJECTS" Style="{StaticResource SectionTitle}" Margin="0,10,0,16"/>
+                            <ListBox x:Name="RecentList" Background="#252536" Foreground="#E0E0E0" 
+                                     BorderBrush="#3A3A4E" BorderThickness="1" Height="200" Padding="5">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="11" Padding="5,3"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Button Content="Clear Recent Projects" Click="ClearRecent_Click"
+                                    Background="#3A3A4E" Foreground="#B0B0B0" BorderThickness="0"
+                                    Padding="15,8" Margin="0,10,0,0" HorizontalAlignment="Left" Cursor="Hand"/>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+            
+            <!-- Footer -->
+            <Border Grid.Row="2" Background="#252536" CornerRadius="0,0,10,10" Padding="20,10">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Reset to Defaults" Click="Reset_Click"
+                            Background="#3A3A4E" Foreground="#B0B0B0" BorderThickness="0"
+                            Padding="20,10" Margin="0,0,10,0" Cursor="Hand"/>
+                    <Button Content="Cancel" Click="Close_Click"
+                            Background="#3A3A4E" Foreground="#E0E0E0" BorderThickness="0"
+                            Padding="20,10" Margin="0,0,10,0" Cursor="Hand"/>
+                    <Button Content="Save Settings" Click="Save_Click"
+                            Background="#00D4AA" Foreground="#1E1E2E" BorderThickness="0"
+                            Padding="20,10" FontWeight="SemiBold" Cursor="Hand"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
