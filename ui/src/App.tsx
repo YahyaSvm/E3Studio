@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { useStore } from '@/store/useStore'
 import Toolbar from '@/components/Toolbar/Toolbar'
@@ -7,7 +8,6 @@ import OperationPanel from '@/components/OperationPanel/OperationPanel'
 import { CheckCircle, XCircle, AlertTriangle, Info, X, Loader2 } from 'lucide-react'
 import clsx from 'clsx'
 
-// ─── Bildirimler ─────────────────────────────────────────────────────────────
 function NotificationStack() {
   const { notifications, dismissNotification } = useStore()
 
@@ -45,22 +45,22 @@ function NotificationStack() {
   )
 }
 
-// ─── Yükleme Overlay ──────────────────────────────────────────────────────────
 function LoadingOverlay() {
+  const { t } = useTranslation()
   const { isLoading, loadingMessage } = useStore()
   if (!isLoading) return null
   return (
     <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
       <div className="flex items-center gap-3 bg-[#1a1a1a] border border-white/15 rounded-xl px-6 py-4 shadow-2xl">
         <Loader2 size={20} className="text-blue-400 animate-spin" />
-        <span className="text-sm text-white/80">{loadingMessage || 'İşleniyor...'}</span>
+        <span className="text-sm text-white/80">{loadingMessage || t('app.loading')}</span>
       </div>
     </div>
   )
 }
 
-// ─── Ana Layout ───────────────────────────────────────────────────────────────
 export default function App() {
+  const { t } = useTranslation()
   const { activePanel } = useStore()
 
   return (
@@ -70,22 +70,20 @@ export default function App() {
       <div className="flex-1 overflow-hidden">
         <PanelGroup direction="horizontal" className="h-full">
 
-          {/* Sol Panel — Operasyonlar / AI / Simülasyon */}
           <Panel defaultSize={22} minSize={16} maxSize={35}>
             <div className="h-full bg-[#111111] border-r border-white/8">
               {activePanel === 'operations' && <OperationPanel />}
               {activePanel === 'simulation' && (
-                <div className="p-4 text-white/50 text-sm">Simülasyon paneli</div>
+                <div className="p-4 text-white/50 text-sm">{t('app.simulation_panel')}</div>
               )}
               {activePanel === 'ai' && (
-                <div className="p-4 text-white/50 text-sm">AI paneli</div>
+                <div className="p-4 text-white/50 text-sm">{t('app.ai_panel')}</div>
               )}
             </div>
           </Panel>
 
           <PanelResizeHandle className="w-1 bg-white/5 hover:bg-blue-500/40 transition-colors cursor-col-resize" />
 
-          {/* Merkez — 3D Viewport */}
           <Panel defaultSize={78} minSize={40}>
             <Viewport3D />
           </Panel>
@@ -93,7 +91,6 @@ export default function App() {
         </PanelGroup>
       </div>
 
-      {/* Global UI elemanları */}
       <NotificationStack />
       <LoadingOverlay />
     </div>

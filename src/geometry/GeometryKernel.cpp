@@ -16,6 +16,12 @@
 #include <BRepOffsetAPI_MakeOffset.hxx>
 #include <BRepBndLib.hxx>
 #include <GeomLProp_SLProps.hxx>
+#include <Geom_Surface.hxx>
+#include <Geom_TrimmedCurve.hxx>
+#include <GC_MakeSegment.hxx>
+#include <BRepTools.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeWire.hxx>
 #include <cmath>
 
 namespace e3::geometry {
@@ -159,6 +165,121 @@ Vec3 GeometryKernel::getSurfaceNormal(const TopoDS_Face& face, double u, double 
         return {n.X(), n.Y(), n.Z()};
     }
     return {0, 0, 1};
+}
+
+std::optional<Mesh> GeometryKernel::loadSTL(const std::string& path) {
+    (void)path;
+    E3_LOG_WARN("STL yukleme henuz implemente edilmedi");
+    return std::nullopt;
+}
+
+ZSlice GeometryKernel::sliceAtZ(const TopoDS_Shape& shape, double z) {
+    ZSlice slice;
+    slice.z = z;
+
+    gp_Pln plane(gp_Pnt(0, 0, z), gp_Dir(0, 0, 1));
+    TopoDS_Face face = BRepBuilderAPI_MakeFace(plane, -1e6, 1e6, -1e6, 1e6);
+    BRepAlgoAPI_Section section(shape, face);
+    section.Approximation(true);
+    section.Build();
+
+    if (!section.IsDone()) return slice;
+
+    TopExp_Explorer exp(section.Shape(), TopAbs_EDGE);
+    for (; exp.More(); exp.Next()) {
+        TopoDS_Edge edge = TopoDS::Edge(exp.Current());
+        double first, last;
+        Handle(Geom_Curve) curve = BRep_Tool::Curve(edge, first, last);
+        if (curve.IsNull()) continue;
+
+        std::vector<Vec3> contour;
+        const int numSamples = 50;
+        for (int i = 0; i <= numSamples; ++i) {
+            double t = first + (last - first) * i / numSamples;
+            gp_Pnt p = curve->Value(t);
+            contour.push_back({p.X(), p.Y(), p.Z()});
+        }
+        slice.contours.push_back(contour);
+    }
+
+    return slice;
+}
+
+std::vector<ZSlice> GeometryKernel::sliceByZ(
+    const TopoDS_Shape& shape,
+    double zStart,
+    double zEnd,
+    double zStep)
+{
+    std::vector<ZSlice> slices;
+    if (zStep <= 0 || zStart > zEnd) return slices;
+
+    for (double z = zStart; z <= zEnd; z += zStep) {
+        slices.push_back(sliceAtZ(shape, z));
+    }
+    return slices;
+}
+
+std::vector<Vec3> GeometryKernel::offsetContour(
+    const std::vector<Vec3>& contour,
+    double offset,
+    bool inward)
+{
+    if (contour.size() < 3) return contour;
+
+    // Convert contour to OCCT wire
+    BRepBuilderAPI_MakeWire wireMaker;
+    for (size_t i = 0; i < contour.size(); ++i) {
+        const auto& p1 = contour[i];
+        const auto& p2 = contour[(i + 1) % contour.size()];
+        gp_Pnt p1_occ(p1.x, p1.y, p1.z);
+        gp_Pnt p2_occ(p2.x, p2.y, p2.z);
+        Handle(Geom_TrimmedCurve) seg = GC_MakeSegment(p1_occ, p2_occ);
+        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(seg);
+        wireMaker.Add(edge);
+    }
+
+    if (!wireMaker.IsDone()) return contour;
+
+    TopoDS_Wire wire = wireMaker.Wire();
+    double offsetVal = inward ? -std::abs(offset) : std::abs(offset);
+
+    BRepOffsetAPI_MakeOffset offsetMaker;
+    offsetMaker.AddWire(wire);
+    offsetMaker.Perform(offsetVal);
+
+    if (!offsetMaker.IsDone()) return contour;
+
+    // Extract the offset result
+    TopoDS_Shape offsetShape = offsetMaker.Shape();
+    std::vector<Vec3> result;
+    TopExp_Explorer exp(offsetShape, TopAbs_VERTEX);
+    for (; exp.More(); exp.Next()) {
+        TopoDS_Vertex v = TopoDS::Vertex(exp.Current());
+        gp_Pnt p = BRep_Tool::Pnt(v);
+        result.push_back({p.X(), p.Y(), p.Z()});
+    }
+
+    return result;
+}
+
+std::vector<Vec3> GeometryKernel::sampleSurface(
+    const TopoDS_Face& face,
+    double stepU,
+    double stepV)
+{
+    std::vector<Vec3> samples;
+    Handle(Geom_Surface) surf = BRep_Tool::Surface(face);
+    double uMin, uMax, vMin, vMax;
+    BRepTools::UVBounds(face, uMin, uMax, vMin, vMax);
+
+    for (double u = uMin; u <= uMax; u += stepU) {
+        for (double v = vMin; v <= vMax; v += stepV) {
+            gp_Pnt p = surf->Value(u, v);
+            samples.push_back({p.X(), p.Y(), p.Z()});
+        }
+    }
+    return samples;
 }
 
 } // namespace e3::geometry

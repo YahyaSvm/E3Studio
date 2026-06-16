@@ -1,0 +1,47 @@
+{
+  "toolbar.new": "Yeni",
+  "toolbar.new_project": "Yeni Proje",
+  "toolbar.open": "Aç",
+  "toolbar.save": "Kaydet",
+  "toolbar.operations": "Operasyonlar",
+  "toolbar.simulation": "Simülasyon",
+  "toolbar.ai": "AI",
+  "toolbar.simulation_view": "Simülasyon",
+  "toolbar.project_not_loaded": "Proje yüklenmedi",
+
+  "operation_panel.title": "Operasyonlar",
+  "operation_panel.add": "Ekle",
+  "operation_panel.empty": "Operasyon yok",
+  "operation_panel.empty_hint": "\"Ekle\" ile başlayın",
+  "operation_panel.compute_all": "Tüm Kirli Operasyonları Hesapla",
+  "operation_panel.compute": "Toolpath Hesapla",
+  "operation_panel.optimize_ai": "AI ile Optimize Et",
+  "operation_panel.delete": "Sil",
+  "operation_panel.ai_suggestion": "AI Öneri",
+  "operation_panel.loading_toolpath": "Toolpath hesaplanıyor...",
+  "operation_panel.loading_ai": "AI optimize ediliyor...",
+  "operation_panel.tool_life": "Ömür: {minutes} dk",
+  "operation_panel.operation": "Operasyon",
+
+  "operation_type.Pocket2D": "Cep (2.5D)",
+  "operation_type.Contour2D": "Kontur (2.5D)",
+  "operation_type.AdaptiveClearing": "Adaptive Clearing",
+  "operation_type.SurfaceFinishing": "Yüzey Finish",
+  "operation_type.Drilling": "Delik",
+
+  "app.loading": "İşleniyor...",
+  "app.simulation_panel": "Simülasyon paneli",
+  "app.ai_panel": "AI paneli",
+
+  "notify.connected": "Backend bağlantısı kuruldu",
+  "notify.ready": "E3Studio hazır",
+  "notify.toolpath_ready": "Toolpath hazır — {count} nokta, ~{time} dk",
+  "notify.unknown_error": "Bilinmeyen hata",
+  "notify.timeout": "Zaman aşımı: {type}",
+  "notify.not_connected": "WebSocket bağlı değil",
+
+  "console.connected": "[E3] Backend bağlantısı kuruldu",
+  "console.parse_error": "[E3] JSON parse hatası:",
+  "console.reconnecting": "[E3] Bağlantı kesildi, 2s sonra yeniden denenecek...",
+  "console.ws_error": "[E3] WebSocket hatası:"
+}

@@ -1,64 +1,98 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// E3Studio :: SimulationEngine.cpp  — Dexel tabanlı malzeme kaldırma
-// ─────────────────────────────────────────────────────────────────────────────
 #include "SimulationEngine.h"
 #include "../core/Logger.h"
+#include <future>
 #include <algorithm>
-#include <cmath>
 
 namespace e3::simulation {
 
 // ─── DexelColumn ─────────────────────────────────────────────────────────────
 
-void DexelColumn::subtract(double /*toolRadius*/, double zBottom, double zTop) {
+void DexelColumn::subtract(double toolRadius, double zBottom, double zTop) {
+    (void)toolRadius;
     std::vector<std::pair<double,double>> result;
-    for (const auto& [sb, st] : segments) {
-        if (st <= zBottom || sb >= zTop) {
-            result.emplace_back(sb, st);
+    for (const auto& seg : segments) {
+        if (seg.second <= zBottom || seg.first >= zTop) {
+            result.push_back(seg);
         } else {
-            if (sb < zBottom) result.emplace_back(sb, zBottom);
-            if (st > zTop)    result.emplace_back(zTop, st);
+            if (seg.first < zBottom) {
+                result.push_back({seg.first, zBottom});
+            }
+            if (seg.second > zTop) {
+                result.push_back({zTop, seg.second});
+            }
         }
     }
     segments = std::move(result);
 }
 
 void DexelColumn::merge() {
-    if (segments.size() < 2) return;
+    if (segments.empty()) return;
     std::sort(segments.begin(), segments.end());
     std::vector<std::pair<double,double>> merged;
     merged.push_back(segments[0]);
     for (size_t i = 1; i < segments.size(); ++i) {
-        auto& back = merged.back();
-        if (segments[i].first <= back.second)
-            back.second = std::max(back.second, segments[i].second);
-        else
+        if (segments[i].first <= merged.back().second) {
+            merged.back().second = std::max(merged.back().second, segments[i].second);
+        } else {
             merged.push_back(segments[i]);
+        }
     }
     segments = std::move(merged);
 }
 
 // ─── StockModel ──────────────────────────────────────────────────────────────
 
-StockModel StockModel::fromBoundingBox(const geometry::BoundingBox& bb,
-                                        double resolution)
+StockModel StockModel::fromBoundingBox(
+    const geometry::BoundingBox& bbox,
+    double resolution)
 {
     StockModel model;
-    model.bbox           = bb;
+    model.bbox = bbox;
     model.gridResolution = resolution;
-    model.gridX = static_cast<int>(std::ceil((bb.max.x - bb.min.x) / resolution));
-    model.gridY = static_cast<int>(std::ceil((bb.max.y - bb.min.y) / resolution));
+
+    geometry::Vec3 size = bbox.size();
+    model.gridX = std::max(1, static_cast<int>(size.x / resolution));
+    model.gridY = std::max(1, static_cast<int>(size.y / resolution));
 
     model.columns.resize(model.gridX * model.gridY);
     for (int iy = 0; iy < model.gridY; ++iy) {
         for (int ix = 0; ix < model.gridX; ++ix) {
             auto& col = model.columnAt(ix, iy);
-            col.x = bb.min.x + (ix + 0.5) * resolution;
-            col.y = bb.min.y + (iy + 0.5) * resolution;
-            col.segments.emplace_back(bb.min.z, bb.max.z);
+            col.x = bbox.min.x + (ix + 0.5) * resolution;
+            col.y = bbox.min.y + (iy + 0.5) * resolution;
+            col.segments.push_back({bbox.min.z, bbox.max.z});
         }
     }
+
     return model;
+}
+
+geometry::Mesh StockModel::toMesh() const {
+    geometry::Mesh mesh;
+    const double res = gridResolution;
+    const double halfRes = res * 0.5;
+
+    for (int iy = 0; iy < gridY; ++iy) {
+        for (int ix = 0; ix < gridX; ++ix) {
+            const auto& col = columns[iy * gridX + ix];
+            double topZ = col.segments.empty() ? bbox.min.z : col.segments.back().second;
+            if (topZ <= bbox.min.z + 0.001) continue;
+
+            double x = col.x, y = col.y;
+            double x0 = x - halfRes, x1 = x + halfRes;
+            double y0 = y - halfRes, y1 = y + halfRes;
+
+            size_t idx = mesh.vertices.size();
+            mesh.vertices.push_back({x0, y0, topZ});
+            mesh.vertices.push_back({x1, y0, topZ});
+            mesh.vertices.push_back({x1, y1, topZ});
+            mesh.vertices.push_back({x0, y1, topZ});
+            mesh.triangles.push_back({static_cast<int>(idx), static_cast<int>(idx+1), static_cast<int>(idx+2)});
+            mesh.triangles.push_back({static_cast<int>(idx), static_cast<int>(idx+2), static_cast<int>(idx+3)});
+        }
+    }
+    mesh.computeNormals();
+    return mesh;
 }
 
 DexelColumn& StockModel::columnAt(int ix, int iy) {
@@ -69,11 +103,6 @@ const DexelColumn& StockModel::columnAt(int ix, int iy) const {
     return columns[iy * gridX + ix];
 }
 
-geometry::Mesh StockModel::toMesh() const {
-    // Placeholder — gerçek implementasyon marching squares kullanır
-    return {};
-}
-
 // ─── SimulationEngine ────────────────────────────────────────────────────────
 
 void SimulationEngine::setup(
@@ -82,87 +111,69 @@ void SimulationEngine::setup(
     double toolDiameter,
     double gridResolution)
 {
-    m_stock        = StockModel::fromBoundingBox(stockBbox, gridResolution);
-    m_toolpath     = toolpath;
+    m_stock = StockModel::fromBoundingBox(stockBbox, gridResolution);
+    m_toolpath = toolpath;
     m_toolDiameter = toolDiameter;
-
-    // Başlangıç hacmi: tüm sütunların toplam yüksekliği × hücre alanı
-    double cellArea = gridResolution * gridResolution;
-    double total = 0;
-    for (const auto& col : m_stock.columns)
-        for (const auto& [zb, zt] : col.segments)
-            total += (zt - zb) * cellArea;
-    m_initialVolume = total;
-
-    m_paused.store(false);
-    m_stop.store(false);
-
-    E3_LOG_INFO("Simülasyon kurulumu: {}×{} grid, V0={:.1f} mm³",
-                m_stock.gridX, m_stock.gridY, m_initialVolume);
+    m_initialVolume = stockBbox.size().x * stockBbox.size().y * stockBbox.size().z;
+    m_paused = false;
+    m_stop = false;
 }
 
 void SimulationEngine::runAsync(
     std::function<void(const SimulationFrame&)> onFrame,
     std::function<void()> onComplete)
 {
-    if (m_simThread.joinable()) m_simThread.join();
-
-    m_stop.store(false);
-    m_paused.store(false);
+    if (m_simThread.joinable()) {
+        m_stop = true;
+        m_simThread.join();
+    }
+    m_paused = false;
+    m_stop = false;
 
     m_simThread = std::thread([this, onFrame, onComplete]() {
+        const double toolRadius = m_toolDiameter / 2.0;
         const size_t total = m_toolpath.moves.size();
-        for (size_t i = 0; i < total && !m_stop.load(); ++i) {
-            while (m_paused.load() && !m_stop.load())
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-            applyMove(m_toolpath.moves[i], m_toolDiameter / 2.0);
+        for (size_t i = 0; i < total && !m_stop; ++i) {
+            while (m_paused && !m_stop) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            if (m_stop) break;
+
+            applyMove(m_toolpath.moves[i], toolRadius);
 
             SimulationFrame frame;
-            frame.moveIndex  = i;
-            frame.progress   = static_cast<float>(i + 1) / static_cast<float>(total);
+            frame.moveIndex = i;
+            frame.progress = static_cast<float>(i + 1) / static_cast<float>(total);
+            frame.remainingVolume = 0.0;
             frame.hasCollision = false;
-            frame.hasGouge     = false;
-
-            // Kalan hacim
-            double cellArea = m_stock.gridResolution * m_stock.gridResolution;
-            double vol = 0;
-            for (const auto& col : m_stock.columns)
-                for (const auto& [zb, zt] : col.segments)
-                    vol += (zt - zb) * cellArea;
-            frame.remainingVolume = vol;
+            frame.hasGouge = false;
 
             if (onFrame) onFrame(frame);
-
-            if (i % 10 == 0)
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         if (onComplete) onComplete();
-        E3_LOG_INFO("Simülasyon tamamlandı");
     });
 }
 
 SimulationFrame SimulationEngine::stepTo(size_t moveIndex) {
-    moveIndex = std::min(moveIndex, m_toolpath.moves.size() - 1);
+    SimulationFrame frame{};
+    const double toolRadius = m_toolDiameter / 2.0;
+    const size_t total = m_toolpath.moves.size();
+    if (total == 0) return frame;
 
-    // Tüm baştan yeniden uygula (production'da checkpoint kullanılır)
-    m_stock = StockModel::fromBoundingBox(m_stock.bbox, m_stock.gridResolution);
-    for (size_t i = 0; i <= moveIndex; ++i)
-        applyMove(m_toolpath.moves[i], m_toolDiameter / 2.0);
+    moveIndex = std::min(moveIndex, total - 1);
 
-    double cellArea = m_stock.gridResolution * m_stock.gridResolution;
-    double vol = 0;
-    for (const auto& col : m_stock.columns)
-        for (const auto& [zb, zt] : col.segments)
-            vol += (zt - zb) * cellArea;
+    for (size_t i = 0; i <= moveIndex; ++i) {
+        applyMove(m_toolpath.moves[i], toolRadius);
+    }
 
-    SimulationFrame frame;
-    frame.moveIndex      = moveIndex;
-    frame.progress       = static_cast<float>(moveIndex + 1) /
-                           static_cast<float>(m_toolpath.moves.size());
-    frame.remainingVolume = vol;
-    frame.hasCollision   = false;
-    frame.hasGouge       = false;
+    frame.moveIndex = moveIndex;
+    frame.progress = static_cast<float>(moveIndex + 1) / static_cast<float>(total);
+    frame.remainingVolume = 0.0;
+    frame.hasCollision = false;
+    frame.hasGouge = false;
+
     return frame;
 }
 
@@ -170,12 +181,16 @@ geometry::Mesh SimulationEngine::getCurrentMesh() const {
     return m_stock.toMesh();
 }
 
-// ─── Private ─────────────────────────────────────────────────────────────────
+// ─── Private Helpers ─────────────────────────────────────────────────────────
 
 void SimulationEngine::applyMove(const toolpath::Move& move, double toolRadius) {
-    using T = toolpath::Move::Type;
-    if (move.type == T::Rapid || move.type == T::Retract) return;
-    applyToolSweep(move.position, move.position, toolRadius);
+    if (move.type == toolpath::Move::Type::Rapid || move.type == toolpath::Move::Type::Retract) {
+        return;
+    }
+
+    geometry::Vec3 from = move.position;
+    geometry::Vec3 to = move.position;
+    applyToolSweep(from, to, toolRadius);
 }
 
 void SimulationEngine::applyToolSweep(
@@ -186,10 +201,10 @@ void SimulationEngine::applyToolSweep(
     const double res = m_stock.gridResolution;
     const double r2  = toolRadius * toolRadius;
 
-    int ixMin = static_cast<int>((to.x - toolRadius - m_stock.bbox.minX) / res);
-    int ixMax = static_cast<int>((to.x + toolRadius - m_stock.bbox.minX) / res) + 1;
-    int iyMin = static_cast<int>((to.y - toolRadius - m_stock.bbox.minY) / res);
-    int iyMax = static_cast<int>((to.y + toolRadius - m_stock.bbox.minY) / res) + 1;
+    int ixMin = static_cast<int>((to.x - toolRadius - m_stock.bbox.min.x) / res);
+    int ixMax = static_cast<int>((to.x + toolRadius - m_stock.bbox.min.x) / res) + 1;
+    int iyMin = static_cast<int>((to.y - toolRadius - m_stock.bbox.min.y) / res);
+    int iyMax = static_cast<int>((to.y + toolRadius - m_stock.bbox.min.y) / res) + 1;
 
     ixMin = std::clamp(ixMin, 0, m_stock.gridX - 1);
     ixMax = std::clamp(ixMax, 0, m_stock.gridX - 1);
@@ -202,252 +217,12 @@ void SimulationEngine::applyToolSweep(
             double dx = col.x - to.x;
             double dy = col.y - to.y;
             if (dx*dx + dy*dy <= r2) {
-                const double zBottom = to.z - 75.0; // takım uzunluğu varsayılan
+                const double zBottom = to.z - 75.0;
                 const double zTop    = to.z;
                 col.subtract(toolRadius, zBottom, zTop);
             }
         }
     }
-}
-
-} // namespace e3::simulation
-
-// ─── DexelColumn ─────────────────────────────────────────────────────────────
-
-void DexelColumn::subtract(double zBottom, double zTop) {
-    std::vector<ZSegment> result;
-    for (const auto& seg : segments) {
-        if (seg.zTop <= zBottom || seg.zBottom >= zTop) {
-            // Kesişim yok — olduğu gibi bırak
-            result.push_back(seg);
-        } else {
-            // Alt parça
-            if (seg.zBottom < zBottom) {
-                result.push_back({seg.zBottom, zBottom});
-            }
-            // Üst parça
-            if (seg.zTop > zTop) {
-                result.push_back({zTop, seg.zTop});
-            }
-        }
-    }
-    segments = std::move(result);
-}
-
-double DexelColumn::remainingHeight() const {
-    double total = 0;
-    for (const auto& s : segments) total += (s.zTop - s.zBottom);
-    return total;
-}
-
-// ─── StockModel ──────────────────────────────────────────────────────────────
-
-StockModel StockModel::fromBoundingBox(const geometry::BoundingBox& bb,
-                                        int resX, int resY)
-{
-    StockModel model;
-    model.minX = bb.minX; model.maxX = bb.maxX;
-    model.minY = bb.minY; model.maxY = bb.maxY;
-    model.resX = resX;    model.resY = resY;
-
-    const double zBottom = bb.minZ;
-    const double zTop    = bb.maxZ;
-
-    model.grid.resize(resX * resY);
-    for (auto& col : model.grid) {
-        col.segments.push_back({zBottom, zTop});
-    }
-
-    return model;
-}
-
-DexelColumn& StockModel::column(int xi, int yi) {
-    return grid[yi * resX + xi];
-}
-
-const DexelColumn& StockModel::column(int xi, int yi) const {
-    return grid[yi * resX + xi];
-}
-
-void StockModel::subtractCylinder(double cx, double cy,
-                                   double radius,
-                                   double zBottom, double zTop)
-{
-    const double cellW = (maxX - minX) / resX;
-    const double cellH = (maxY - minY) / resY;
-    const double r2 = radius * radius;
-
-    int ixMin = static_cast<int>((cx - radius - minX) / cellW);
-    int ixMax = static_cast<int>((cx + radius - minX) / cellW) + 1;
-    int iyMin = static_cast<int>((cy - radius - minY) / cellH);
-    int iyMax = static_cast<int>((cy + radius - minY) / cellH) + 1;
-
-    ixMin = std::clamp(ixMin, 0, resX - 1);
-    ixMax = std::clamp(ixMax, 0, resX - 1);
-    iyMin = std::clamp(iyMin, 0, resY - 1);
-    iyMax = std::clamp(iyMax, 0, resY - 1);
-
-    for (int iy = iyMin; iy <= iyMax; ++iy) {
-        for (int ix = ixMin; ix <= ixMax; ++ix) {
-            const double wx = minX + (ix + 0.5) * cellW;
-            const double wy = minY + (iy + 0.5) * cellH;
-            const double dx = wx - cx;
-            const double dy = wy - cy;
-            if (dx*dx + dy*dy <= r2) {
-                column(ix, iy).subtract(zBottom, zTop);
-            }
-        }
-    }
-}
-
-double StockModel::remainingMaterialRatio() const {
-    if (grid.empty()) return 0;
-    double total = 0;
-    for (const auto& col : grid) total += col.remainingHeight();
-    return total / static_cast<double>(grid.size());
-}
-
-// ─── SimulationEngine ────────────────────────────────────────────────────────
-
-SimulationEngine::SimulationEngine()
-    : m_running(false), m_paused(false), m_currentStep(0)
-{}
-
-SimulationEngine::~SimulationEngine() {
-    pause();
-}
-
-void SimulationEngine::setStock(StockModel stock) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_stock = std::move(stock);
-    m_currentStep = 0;
-}
-
-void SimulationEngine::setToolpath(const toolpath::Toolpath& tp) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_toolpath = tp;
-    m_currentStep = 0;
-}
-
-void SimulationEngine::setTool(double diameter, double length) {
-    m_toolDiameter = diameter;
-    m_toolLength   = length;
-}
-
-std::future<void> SimulationEngine::runAsync(FrameCallback cb) {
-    m_running.store(true);
-    m_paused.store(false);
-
-    return std::async(std::launch::async, [this, cb]() {
-        const size_t total = m_toolpath.moves.size();
-        if (total == 0) return;
-
-        for (size_t i = 0; i < total && m_running.load(); ++i) {
-            // Duraklama kontrolü
-            while (m_paused.load() && m_running.load()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            }
-
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                m_currentStep = static_cast<int>(i);
-            }
-
-            processMove(i);
-
-            SimulationFrame frame;
-            frame.stepIndex   = static_cast<int>(i);
-            frame.progress    = static_cast<float>(i + 1) / static_cast<float>(total);
-            frame.currentPos  = m_toolpath.moves[i].position;
-            frame.hasCollision = false;
-            frame.hasGouge     = false;
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                frame.remainingMaterial = m_stock.remainingMaterialRatio();
-            }
-
-            if (cb) cb(frame);
-
-            // Görsel hız — her 5 adımda kısa uyku
-            if (i % 5 == 0) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-        }
-
-        m_running.store(false);
-        E3_LOG_INFO("Simulation", "Simülasyon tamamlandı: {} adım", total);
-    });
-}
-
-void SimulationEngine::pause() {
-    m_paused.store(true);
-}
-
-void SimulationEngine::resume() {
-    m_paused.store(false);
-}
-
-void SimulationEngine::stop() {
-    m_running.store(false);
-}
-
-SimulationFrame SimulationEngine::stepTo(int stepIndex) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-
-    SimulationFrame frame;
-    if (m_toolpath.moves.empty()) return frame;
-
-    stepIndex = std::clamp(stepIndex, 0,
-                           static_cast<int>(m_toolpath.moves.size()) - 1);
-
-    // Stoku sıfırla, o adıma kadar yeniden uygula
-    // (Scrubbing — üretimde daha verimli checkpoint sistemi kullanılır)
-    if (stepIndex < m_currentStep) {
-        // Geri git — stoku yeniden hesapla
-        // Hızlı yol: orijinal stok + [0..stepIndex]
-        // Şimdilik kısmi reset
-        m_currentStep = 0;
-    }
-
-    for (int i = m_currentStep; i <= stepIndex; ++i) {
-        applyMove(m_toolpath.moves[i]);
-    }
-
-    m_currentStep = stepIndex;
-
-    frame.stepIndex = stepIndex;
-    frame.progress  = static_cast<float>(stepIndex + 1) /
-                      static_cast<float>(m_toolpath.moves.size());
-    frame.currentPos = m_toolpath.moves[stepIndex].position;
-    frame.remainingMaterial = m_stock.remainingMaterialRatio();
-
-    return frame;
-}
-
-// ─── Private Helpers ─────────────────────────────────────────────────────────
-
-void SimulationEngine::processMove(size_t index) {
-    if (index >= m_toolpath.moves.size()) return;
-    const auto& move = m_toolpath.moves[index];
-    applyMove(move);
-}
-
-void SimulationEngine::applyMove(const toolpath::Move& move) {
-    using MoveType = toolpath::Move::Type;
-
-    // Rapid hareketlerde malzeme kaldırma yok
-    if (move.type == MoveType::Rapid || move.type == MoveType::Retract) return;
-
-    const double r = m_toolDiameter / 2.0;
-    const double zBottom = move.position.z - m_toolLength;
-    const double zTop    = move.position.z;
-
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_stock.subtractCylinder(
-        move.position.x, move.position.y,
-        r,
-        zBottom, zTop
-    );
 }
 
 } // namespace e3::simulation
