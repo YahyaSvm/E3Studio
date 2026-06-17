@@ -39,6 +39,8 @@ struct StockModel {
 
     DexelColumn& columnAt(int ix, int iy);
     const DexelColumn& columnAt(int ix, int iy) const;
+
+    double remainingVolume() const;
 };
 
 // ─── Simülasyon Sonucu ────────────────────────────────────────────────────

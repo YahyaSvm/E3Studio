@@ -51,8 +51,8 @@ StockModel StockModel::fromBoundingBox(
     model.gridResolution = resolution;
 
     geometry::Vec3 size = bbox.size();
-    model.gridX = std::max(1, static_cast<int>(size.x / resolution));
-    model.gridY = std::max(1, static_cast<int>(size.y / resolution));
+    model.gridX = std::max(1, static_cast<int>(std::ceil(size.x / resolution)));
+    model.gridY = std::max(1, static_cast<int>(std::ceil(size.y / resolution)));
 
     model.columns.resize(model.gridX * model.gridY);
     for (int iy = 0; iy < model.gridY; ++iy) {
@@ -103,6 +103,17 @@ const DexelColumn& StockModel::columnAt(int ix, int iy) const {
     return columns[iy * gridX + ix];
 }
 
+double StockModel::remainingVolume() const {
+    double volume = 0.0;
+    const double cellArea = gridResolution * gridResolution;
+    for (const auto& col : columns) {
+        for (const auto& seg : col.segments) {
+            volume += (seg.second - seg.first) * cellArea;
+        }
+    }
+    return volume;
+}
+
 // ─── SimulationEngine ────────────────────────────────────────────────────────
 
 void SimulationEngine::setup(
@@ -145,7 +156,7 @@ void SimulationEngine::runAsync(
             SimulationFrame frame;
             frame.moveIndex = i;
             frame.progress = static_cast<float>(i + 1) / static_cast<float>(total);
-            frame.remainingVolume = 0.0;
+            frame.remainingVolume = m_stock.remainingVolume();
             frame.hasCollision = false;
             frame.hasGouge = false;
 
@@ -164,13 +175,15 @@ SimulationFrame SimulationEngine::stepTo(size_t moveIndex) {
 
     moveIndex = std::min(moveIndex, total - 1);
 
+    // Reset stock to initial state before re-applying moves
+    m_stock = StockModel::fromBoundingBox(m_stock.bbox, m_stock.gridResolution);
     for (size_t i = 0; i <= moveIndex; ++i) {
         applyMove(m_toolpath.moves[i], toolRadius);
     }
 
     frame.moveIndex = moveIndex;
     frame.progress = static_cast<float>(moveIndex + 1) / static_cast<float>(total);
-    frame.remainingVolume = 0.0;
+    frame.remainingVolume = m_stock.remainingVolume();
     frame.hasCollision = false;
     frame.hasGouge = false;
 
