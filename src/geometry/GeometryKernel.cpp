@@ -50,6 +50,29 @@ void Mesh::computeBBox() {
     }
 }
 
+void Mesh::computeNormals() {
+    normals.assign(vertices.size(), Vec3{0, 0, 0});
+    for (const auto& tri : triangles) {
+        if (tri[0] >= vertices.size() || tri[1] >= vertices.size() || tri[2] >= vertices.size())
+            continue;
+        const auto& v0 = vertices[tri[0]];
+        const auto& v1 = vertices[tri[1]];
+        const auto& v2 = vertices[tri[2]];
+
+        Vec3 edge1 = v1 - v0;
+        Vec3 edge2 = v2 - v0;
+        Vec3 faceNormal = edge1.cross(edge2);
+
+        normals[tri[0]] = normals[tri[0]] + faceNormal;
+        normals[tri[1]] = normals[tri[1]] + faceNormal;
+        normals[tri[2]] = normals[tri[2]] + faceNormal;
+    }
+
+    for (auto& n : normals) {
+        n = n.normalized();
+    }
+}
+
 std::vector<float> Mesh::toInterleavedBuffer() const {
     std::vector<float> buf;
     buf.reserve(triangles.size() * 3 * 6); // 3 vertex x (xyz + normal)

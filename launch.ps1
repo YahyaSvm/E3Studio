@@ -41,13 +41,13 @@ if ($DevUI) {
     Start-Sleep -Seconds 3
     Start-Process "http://localhost:3000"
 } else {
-    # Production: dist/ui klasörünü serve et
+    # Production: ui/dist klasörünü serve et
     Write-Host "[3/3] UI açılıyor (dist mod)..." -ForegroundColor Yellow
     # Basit dosya sunucu — Node gerektirir
     Push-Location "$Root"
     $ServeExists = Get-Command "npx" -ErrorAction SilentlyContinue
     if ($ServeExists) {
-        Start-Process "cmd" -ArgumentList "/c npx serve dist/ui -p 3000 -s" -NoNewWindow
+        Start-Process "cmd" -ArgumentList "/c npx serve ui/dist -p 3000 -s" -NoNewWindow
         Start-Sleep -Seconds 2
     }
     Pop-Location
