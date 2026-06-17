@@ -110,7 +110,8 @@ jobs:
             build-essential cmake git ninja-build \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
             libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev \
-            libfontconfig1-dev libssl-dev pkg-config
+            libfontconfig1-dev libssl-dev pkg-config \
+            autoconf autoconf-archive automake libtool
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -174,7 +175,7 @@ jobs:
         run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Install Dependencies
-        run: brew install cmake ninja node
+        run: brew install cmake ninja node autoconf autoconf-archive automake libtool
 
       - name: Configure CMake
         run: |

@@ -116,7 +116,8 @@ jobs:
             build-essential cmake git ninja-build \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
             libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev \
-            libfontconfig1-dev libssl-dev pkg-config
+            libfontconfig1-dev libssl-dev pkg-config \
+            autoconf autoconf-archive automake libtool
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -199,7 +200,7 @@ jobs:
 
       - name: Install System Dependencies
         run: |
-          brew install cmake ninja node
+          brew install cmake ninja node autoconf autoconf-archive automake libtool
 
       - name: Cache vcpkg
         uses: actions/cache@v4
@@ -270,7 +271,7 @@ jobs:
 
       - name: Install System Dependencies
         run: |
-          brew install cmake ninja node
+          brew install cmake ninja node autoconf autoconf-archive automake libtool
 
       - name: Cache vcpkg
         uses: actions/cache@v4
