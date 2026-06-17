@@ -9,7 +9,7 @@ on:
 
 env:
   BUILD_TYPE: Release
-  VCPKG_COMMIT_ID: "a42af01b8a11edaa1b199d3f09b71f98e1b12e4e"
+  VCPKG_COMMIT_ID: "master"
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════════
