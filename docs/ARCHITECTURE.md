@@ -1,250 +1,301 @@
-# E3Studio Architecture
+# Architecture
 
-## System Overview
+E3Studio is a hybrid CAM application. The repository contains a mature Windows desktop path in C# and an in-progress cross-platform runtime made of a C++ backend and a React/Three.js web UI.
 
-E3Studio uses a hybrid architecture that separates computation-intensive operations into a high-performance C++ backend while providing a modern, responsive web-based UI through React/Three.js. An optional WPF desktop client is available for Windows users who prefer a native experience.
+The important architectural distinction is:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Client Layer                                    │
-│                                                                              │
-│  ┌──────────────────────┐  ┌──────────────────────────────────────────────┐ │
-│  │   WPF Desktop Client │  │          React Web UI                         │ │
-│  │   (.NET 10 / C#)     │  │          (React 18 + Three.js + Zustand)      │ │
-│  │                      │  │                                               │ │
-│  │  • HelixToolkit 3D   │  │  • React Three Fiber 3D viewport             │ │
-│  │  • AvalonDock panels │  │  • Tailwind CSS responsive layout             │ │
-│  │  • Native Windows UI │  │  • Vite HMR dev server                        │ │
-│  │  • Direct CAM access │  │  • WebSocket client                           │ │
-│  └──────────┬───────────┘  └──────────────────┬───────────────────────────┘ │
-│             │                                  │                             │
-│             │ Direct (C#)                      │ WebSocket (JSON)            │
-│             │                                  │ ws://localhost:9001         │
-└─────────────┼──────────────────────────────────┼────────────────────────────┘
-              │                                  │
-┌─────────────┼──────────────────────────────────┼────────────────────────────┐
-│             ▼              Backend Layer         ▼                            │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                        C++20 Core Engine                                 │ │
-│  │                                                                          │ │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐  │ │
-│  │  │   Geometry   │ │  Toolpath   │ │ Simulation  │ │ Post Processor  │  │ │
-│  │  │   Module     │ │   Engine    │ │   Engine    │ │    Generator    │  │ │
-│  │  │             │ │             │ │             │ │                 │  │ │
-│  │  │ OpenCASCADE │ │ Profile     │ │ Real-time   │ │ GRBL            │  │ │
-│  │  │ BRep        │ │ Pocket      │ │ Stock rmvl  │ │ Klipper         │  │ │
-│  │  │ STL/STEP    │ │ Drill       │ │ Collision   │ │ Mach3/4         │  │ │
-│  │  │ Mesh        │ │ V-Carve     │ │ Speed ctrl  │ │ LinuxCNC        │  │ │
-│  │  └─────────────┘ │ Nesting     │ │             │ │ Fanuc/Haas/...  │  │ │
-│  │                  └─────────────┘ └─────────────┘ └─────────────────┘  │ │
-│  │                                                                          │ │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐  │ │
-│  │  │    Core      │ │   Machine   │ │     API     │ │      AI         │  │ │
-│  │  │             │ │   Control   │ │   Server    │ │    Module       │  │ │
-│  │  │ Application │ │ Serial/USB  │ │ WebSocket   │ │ Physics-based   │  │ │
-│  │  │ Logger      │ │ DRO         │ │ JSON proto  │ │ Feed/speed opt  │  │ │
-│  │  │ EventBus    │ │ Probe       │ │ Message hub │ │ Tool wear pred  │  │ │
-│  │  │ ThreadPool  │ │ G-Code send │ │             │ │                 │  │ │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────────┘  │ │
-│  │                                                                          │ │
-│  └──────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────┘
+- WPF/C# is currently the richest product surface.
+- C++/React is the portable backend/web direction.
+- Shared concepts exist across both paths, but they are not yet one unified runtime.
+
+## High-level system
+
+```text
+                              Users
+                                │
+              ┌─────────────────┴─────────────────┐
+              │                                   │
+              ▼                                   ▼
+   Windows WPF desktop app              React/Three.js web UI
+   App.xaml / MainWindow.xaml           ui/src/*
+   .NET 10 + HelixToolkit               Vite + Zustand + i18n
+              │                                   │
+              │ direct C# services                │ WebSocket JSON
+              │                                   ▼
+              │                         C++ API server
+              │                         src/api/* on :9001
+              │                                   │
+              └──────────────┬────────────────────┘
+                             ▼
+                      CAM domain concepts
+       projects, stock, tools, operations, toolpaths, simulation, G-Code
 ```
 
-## Module Descriptions
+## Runtime paths
 
-### Core Module (`src/core/`)
+### Windows WPF path
 
-The foundation layer providing application lifecycle and infrastructure services.
+The WPF app is defined by:
 
-| Component | File | Description |
-|-----------|------|-------------|
-| **Application** | `Application.h/cpp` | Singleton managing initialization, shutdown, and global state |
-| **Logger** | `Logger.h/cpp` | Structured logging via spdlog with file and console sinks |
-| **EventBus** | `EventBus.h/cpp` | Publish-subscribe event system for inter-module communication |
-| **ThreadPool** | `ThreadPool.h/cpp` | Worker thread pool for parallel computation |
-| **ProjectManager** | `ProjectManager.h/cpp` | Project file I/O, autosave, recent projects |
+- `App.xaml`, `App.xaml.cs`
+- `MainWindow.xaml`, `MainWindow.xaml.cs`
+- `Controls/`, `Dialogs/`, `Resources/`
+- `Models/`, `Services/`, `CAM/`
 
-### Geometry Module (`src/geometry/`)
+It owns the most complete end-user workflow:
 
-Handles 3D geometry processing using OpenCASCADE Technology (OCCT).
+- new/open/save `.e3p` projects
+- recent projects and autosave
+- stock/material/tool configuration dialogs
+- 2D canvas selection and transform tools
+- layer/project tree management
+- SVG/DXF/STL and other importer service classes
+- CAM operation creation and G-Code generation
+- realtime and stock-removal simulation classes
+- post-processor management dialogs
 
-| Component | File | Description |
-|-----------|------|-------------|
-| **GeometryKernel** | `GeometryKernel.h/cpp` | Core geometry operations, BRep manipulation |
-| **MeshLoader** | `MeshLoader.cpp` | STL/3MF mesh loading and triangulation |
-| **BRepProcessor** | `BRepProcessor.cpp` | STEP/IGES import, BRep operations (boolean, offset) |
-| **GeometryUtils** | `GeometryUtils.cpp` | Utility functions (transformations, measurements) |
+This path builds with `E3Studio.csproj`, targets `net10.0-windows`, and uses WPF-specific dependencies. It is Windows-only.
 
-### Toolpath Module (`src/toolpath/`)
+### C++ backend path
 
-Generates CNC toolpaths from geometry.
+The C++ backend starts at `src/main.cpp`:
 
-| Component | File | Description |
-|-----------|------|-------------|
-| **ToolpathEngine** | `ToolpathEngine.h/cpp` | Main engine coordinating toolpath generation |
-| **Offsetter** | `Offsetter.cpp` | 2D path offset calculation (tool radius compensation) |
-| **PathOptimizer** | `PathOptimizer.cpp` | TSP-based travel path optimization |
-| **Operations/** | `operations/` | Individual operation implementations (profile, pocket, drill) |
+1. initializes logging under `logs`
+2. initializes the singleton `core::Application`
+3. starts `api::APIServer` on port 9001
+4. waits until SIGINT/SIGTERM
+5. stops the API and shuts down the app
 
-### Simulation Module (`src/simulation/`)
+The backend is split into CMake libraries:
 
-Real-time G-Code simulation and verification.
+- `src/core/`
+  - application lifecycle
+  - logging
+  - event bus
+  - thread pool
+  - project manager and JSON project state
 
-| Component | Description |
-|-----------|-------------|
-| **Simulator** | G-Code interpreter with position tracking |
-| **StockRemoval** | Material removal volume calculation |
-| **CollisionDetector** | Tool-holder collision checking |
-| **Timeline** | Frame-by-frame animation control |
+- `src/geometry/`
+  - OpenCASCADE-based shape loading/processing
+  - mesh tessellation for viewport use
 
-### Post Processor Module (`src/postprocessor/`)
+- `src/toolpath/`
+  - toolpath engine
+  - operation implementations for pocket, contour, adaptive clearing, surface finishing
+  - path optimization and offsetting
 
-Generates controller-specific G-Code output.
+- `src/simulation/`
+  - C++ simulation engine
 
-| Component | Description |
-|-----------|-------------|
-| **PostProcessorBase** | Abstract base for all post processors |
-| **GrblPostProcessor** | GRBL-specific output (no line numbers, no tool change) |
-| **IndustrialPostProcessors** | Fanuc, Haas, Heidenhain, Sinumerik |
-| **PostProcessorOptions** | Configuration (line numbers, units, coordinate system) |
+- `src/machine/`
+  - machine kinematics/control abstractions
 
-### API Module (`src/api/`)
+- `src/postprocessor/`
+  - C++ G-Code generator
+  - Fanuc, Haas, Heidenhain, and generic ISO post configs
 
-WebSocket server for UI communication.
+- `src/ai/`
+  - cutting parameter prediction API
+  - current implementation uses physics fallback, not ONNX runtime
 
-| Component | File | Description |
-|-----------|------|-------------|
-| **APIServer** | `APIServer.h/cpp` | ixwebsocket-based server on port 9001 |
-| **MessageHandler** | `MessageHandler.h/cpp` | JSON message routing and dispatch |
+- `src/api/`
+  - WebSocket server
+  - JSON message handler and dispatch table
 
-### AI Module (`src/ai/`)
+### React web UI path
 
-Optional AI/ML features for parameter optimization.
+The web UI lives under `ui/` and is built with Vite.
 
-| Component | Description |
-|-----------|-------------|
-| **FeedSpeedOptimizer** | Physics-based feed/speed recommendation |
-| **ToolWearPredictor** | Tool wear estimation based on cutting parameters |
+Core files:
 
-## Data Flow
+- `ui/src/App.tsx` lays out toolbar, side panel, resizable viewport, notifications, and loading overlay.
+- `ui/src/components/Toolbar/Toolbar.tsx` handles new/open/save actions, panel switching, viewport mode, and language toggle.
+- `ui/src/components/OperationPanel/OperationPanel.tsx` creates operations, triggers computation, and requests AI suggestions.
+- `ui/src/components/Viewport3D/Viewport3D.tsx` renders models, toolpaths, grid, lights, orbit controls, and gizmo through React Three Fiber.
+- `ui/src/store/useStore.ts` stores project/UI state with Zustand and Immer.
+- `ui/src/lib/wsClient.ts` owns WebSocket connection, request/response matching, reconnection, and push-event handling.
+- `ui/src/lib/i18n/` contains English and Turkish translations.
 
-### Toolpath Generation Flow
+The web UI talks only to `ws://localhost:9001` today. It does not directly call C# services.
 
-```
-User Input (geometry + parameters)
-         │
-         ▼
-┌─────────────────┐
-│  Geometry Module │ ← STL/STEP/DXF/SVG import
-│  (BRep / Mesh)   │
-└────────┬────────┘
-         │ Raw geometry
-         ▼
-┌─────────────────┐
-│  Toolpath Engine │ ← Tool selection, cutting parameters
-│  (Offset, Ops)   │
-└────────┬────────┘
-         │ Raw toolpath (G0/G1 moves)
-         ▼
-┌─────────────────┐
-│ Path Optimizer   │ ← TSP travel optimization
-│ (TSP Solver)     │
-└────────┬────────┘
-         │ Optimized toolpath
-         ▼
-┌─────────────────┐
-│ Post Processor   │ ← Controller selection
-│ (G-Code Output)  │
-└────────┬────────┘
-         │ Controller-specific G-Code
-         ▼
-     Export / Simulation
-```
+## Data flow: C++ web workflow
 
-### WebSocket Protocol
-
-```
-Client (UI)                          Server (Backend)
-    │                                     │
-    │  {"type":"project.new", ...}        │
-    │────────────────────────────────────>│
-    │                                     │ Process request
-    │  {"type":"project.created", ...}    │
-    │<────────────────────────────────────│
-    │                                     │
-    │  {"type":"toolpath.generate", ...}  │
-    │────────────────────────────────────>│
-    │                                     │ Compute toolpath
-    │  {"type":"progress", "pct": 45}     │ (streaming)
-    │<────────────────────────────────────│
-    │  {"type":"progress", "pct": 100}    │
-    │<────────────────────────────────────│
-    │  {"type":"toolpath.result", ...}    │
-    │<────────────────────────────────────│
-    │                                     │
+```text
+User action in React
+   │
+   ▼
+ws.send(type, payload)
+   │
+   ▼
+WebSocket message to C++ APIServer
+   │
+   ▼
+MessageHandler dispatch table
+   │
+   ├── ProjectManager for project/model/operation state
+   ├── ToolpathEngine for async computation
+   ├── GCodeGenerator for export
+   └── CuttingParameterPredictor for feed/speed fallback
+   │
+   ▼
+JSON response with status/data or status/message
+   │
+   ▼
+Zustand store update and UI notification
 ```
 
-## Cross-Platform Strategy
+The frontend is also prepared for server push events such as `toolpath.generated`, `simulation.frame`, and `ai.prediction`.
 
-### Platform Abstraction Layers
+## Data model concepts
 
-| Concern | Abstraction | Windows | Linux | macOS |
-|---------|------------|---------|-------|-------|
-| **Filesystem** | `std::filesystem` | Win32 paths | POSIX paths | POSIX paths |
-| **Threading** | `std::thread` | Win32 threads | pthreads | pthreads |
-| **Networking** | ixwebsocket | Winsock2 | POSIX sockets | POSIX sockets |
-| **Logging** | spdlog | Console + File | Console + File | Console + File |
-| **3D Rendering** | Three.js (WebGL) | Browser | Browser | Browser |
-| **Desktop UI** | WPF (Windows only) | Native | N/A | N/A |
-| **Serial Port** | Platform-specific | Win32 API | termios | IOKit |
+### Project
 
-### Build Matrix
+C++ projects are represented by `e3::core::Project` and managed through `ProjectManager`.
 
-| Platform | Compiler | Generator | Triplet |
-|----------|----------|-----------|---------|
-| Windows x64 | MSVC 2022 | Visual Studio 17 | `x64-windows` |
-| Linux x64 | GCC 12+ / Clang 15+ | Ninja | `x64-linux` |
-| Linux ARM64 | GCC 12+ | Ninja | `arm64-linux` |
-| macOS ARM64 | Apple Clang 15+ | Ninja | `arm64-osx` |
-| macOS x64 | Apple Clang 15+ | Ninja | `x64-osx` |
+Important fields:
 
-## Dependency Graph
+- `id`, `name`, `createdAt`, `updatedAt`
+- `MachineConfig machine`
+- `models`
+- `toolLibrary`
+- `operations`
+- `outputDir`
 
+Current C++ JSON persistence includes project metadata, tool library, and operations. Model references and machine configuration exist in memory but are not fully serialized yet.
+
+### Tool
+
+Tools include:
+
+- ID and name
+- type: flat endmill, ball endmill, bull nose, drill, tap
+- diameter, corner radius, flute count, overall length, cutting length
+- material such as Carbide or HSS
+
+### Operation
+
+C++ operation types are:
+
+- Pocket2D
+- Contour2D
+- SurfaceFinishing
+- AdaptiveClearing
+- Drilling
+- Threading
+
+Operations carry tool references, geometry references, feed/plunge rates, spindle speed, depth of cut, stepover, stock-to-leave, tolerance, dirty state, and computed toolpath ID.
+
+### Model reference
+
+A model has:
+
+- generated ID
+- file path
+- role: workpiece, stock, or fixture
+- transform matrix
+
+Current mesh serving path loads/tessellates with the C++ geometry kernel.
+
+## WebSocket API
+
+Implemented API messages are documented in `docs/API.md`.
+
+The API layer is deliberately thin:
+
+- parse envelope
+- dispatch by `type`
+- call core/toolpath/postprocessor/AI services
+- return JSON
+
+Current successful responses are shaped as:
+
+```json
+{
+  "status": "ok",
+  "id": "request-id",
+  "data": {}
+}
 ```
-                    ┌──────────────┐
-                    │   E3Studio   │
-                    │  (main.cpp)  │
-                    └──────┬───────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-              ▼            ▼            ▼
-        ┌──────────┐ ┌──────────┐ ┌──────────┐
-        │  e3_api  │ │  e3_ai   │ │ e3_core  │
-        └────┬─────┘ └────┬─────┘ └────┬─────┘
-             │            │            │
-             ▼            ▼            ▼
-        ┌──────────┐ ┌──────────┐ ┌──────────────┐
-        │e3_machine│ │e3_post-  │ │  e3_geometry │
-        │          │ │processor │ │              │
-        └────┬─────┘ └────┬─────┘ └──────┬───────┘
-             │            │              │
-             ▼            ▼              ▼
-        ┌──────────┐ ┌──────────┐ ┌──────────────┐
-        │e3_simul- │ │e3_tool-  │ │  OpenCASCADE │
-        │  ation   │ │  path    │ │    Boost     │
-        └──────────┘ └──────────┘ └──────────────┘
+
+Errors are shaped as:
+
+```json
+{
+  "status": "error",
+  "id": "request-id",
+  "message": "error text"
+}
 ```
 
-## Performance Considerations
+## Build architecture
 
-| Operation | Approach | Optimization |
-|-----------|----------|-------------|
-| **STL Import** | Parallel mesh loading | ThreadPool, memory-mapped I/O |
-| **BRep Operations** | OpenCASCADE kernels | Incremental computation |
-| **Toolpath Generation** | 2D offset + sweep | Spatial indexing (R-tree) |
-| **Path Optimization** | TSP nearest-neighbor | 2-opt improvement heuristic |
-| **Simulation** | G-Code interpreter | Pre-computed tool positions |
-| **Stock Removal** | Voxel-based | GPU compute (future) |
-| **WebSocket** | Binary JSON | Message batching |
+### C++
+
+The root `CMakeLists.txt` requires CMake 3.25 and C++20. It expects these vcpkg packages:
+
+- opencascade
+- boost-system
+- boost-filesystem
+- boost-thread
+- nlohmann-json
+- ixwebsocket
+- spdlog
+
+`build.sh` and `build.ps1` bootstrap vcpkg locally when needed, configure CMake, build the C++ backend, and optionally build the web UI.
+
+### WPF
+
+`E3Studio.csproj` targets `net10.0-windows` and references:
+
+- Dirkster.AvalonDock
+- Dirkster.AvalonDock.Themes.VS2013
+- HelixToolkit.Wpf
+- System.IO.Ports
+
+### Web UI
+
+`ui/package.json` exposes:
+
+- `npm run dev`
+- `npm run build`
+- `npm run preview`
+
+`npm run build` runs TypeScript compilation and then Vite production build.
+
+## Current integration gaps to know about
+
+These are architectural facts, not failures:
+
+- The WPF app and C++/React runtime are not fully unified.
+- The C++ API does not implement every planned command previously documented.
+- The React operation type currently sends strings while the C++ operation parser expects enum integers.
+- The web file picker does not reliably expose absolute file paths in normal browsers.
+- The C++ mesh endpoint currently uses STEP loading in `mesh.get`; broader import support exists mostly in C# services.
+- The Dockerfile starts only the backend binary in its final command, even though the image also contains `ui/dist`.
+- AI prediction is a physics fallback, not model inference.
+- Automated tests are not yet a first-class part of the repository; build success is the main verification signal.
+
+## Extension points
+
+Good places to extend the system:
+
+- Add new WebSocket messages in `MessageHandler.cpp` and document them in `docs/API.md`.
+- Wire EventBus results to API push events for long-running toolpath/simulation tasks.
+- Add serialization fields to `Project::toJson()` / `Project::fromJson()` when making more project state durable.
+- Expand `toolpath.export` post selection to expose every configured C++ post processor.
+- Add upload or sandboxed file-access handling for browser-safe model import.
+- Add tests around project serialization, message handling, G-Code generation, and operation parsing.
+
+## Safety model
+
+CAM software needs conservative defaults. E3Studio code already contains several safety-oriented ideas: safe Z heights, spindle/coolant shutdown commands, tool-change handling, simulation, stock removal, collision checking, and explicit machine/controller post processors.
+
+When changing toolpath generation or post processing, verify at least:
+
+- units and coordinate mode
+- stock zero and work coordinate system
+- safe Z and retract behavior before rapid XY moves
+- spindle and coolant startup/shutdown
+- tool change commands
+- arc formatting and plane selection
+- controller-specific line endings, comments, program headers, and endings
