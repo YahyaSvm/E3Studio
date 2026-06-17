@@ -74,6 +74,10 @@ target_link_libraries(E3Studio PRIVATE
     nlohmann_json::nlohmann_json
 )
 
+if(WIN32)
+    target_link_libraries(E3Studio PRIVATE bcrypt)
+endif()
+
 # ─── UI Kaynakları ───────────────────────────────────────────────────────────
 add_custom_target(build_ui
     COMMAND npm run build
