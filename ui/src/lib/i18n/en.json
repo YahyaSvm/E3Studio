@@ -1,0 +1,47 @@
+{
+  "toolbar.new": "New",
+  "toolbar.new_project": "New Project",
+  "toolbar.open": "Open",
+  "toolbar.save": "Save",
+  "toolbar.operations": "Operations",
+  "toolbar.simulation": "Simulation",
+  "toolbar.ai": "AI",
+  "toolbar.simulation_view": "Simulation",
+  "toolbar.project_not_loaded": "No project loaded",
+
+  "operation_panel.title": "Operations",
+  "operation_panel.add": "Add",
+  "operation_panel.empty": "No operations",
+  "operation_panel.empty_hint": "Start with \"Add\"",
+  "operation_panel.compute_all": "Compute All Dirty Operations",
+  "operation_panel.compute": "Compute Toolpath",
+  "operation_panel.optimize_ai": "Optimize with AI",
+  "operation_panel.delete": "Delete",
+  "operation_panel.ai_suggestion": "AI Suggestion",
+  "operation_panel.loading_toolpath": "Computing toolpath...",
+  "operation_panel.loading_ai": "AI optimizing...",
+  "operation_panel.tool_life": "Life: {minutes} min",
+  "operation_panel.operation": "Operation",
+
+  "operation_type.Pocket2D": "Pocket (2.5D)",
+  "operation_type.Contour2D": "Contour (2.5D)",
+  "operation_type.AdaptiveClearing": "Adaptive Clearing",
+  "operation_type.SurfaceFinishing": "Surface Finish",
+  "operation_type.Drilling": "Drill",
+
+  "app.loading": "Processing...",
+  "app.simulation_panel": "Simulation Panel",
+  "app.ai_panel": "AI Panel",
+
+  "notify.connected": "Backend connected",
+  "notify.ready": "E3Studio ready",
+  "notify.toolpath_ready": "Toolpath ready — {count} points, ~{time} min",
+  "notify.unknown_error": "Unknown error",
+  "notify.timeout": "Timeout: {type}",
+  "notify.not_connected": "WebSocket not connected",
+
+  "console.connected": "[E3] Backend connected",
+  "console.parse_error": "[E3] JSON parse error:",
+  "console.reconnecting": "[E3] Connection lost, retrying in 2s...",
+  "console.ws_error": "[E3] WebSocket error:"
+}

@@ -1,8 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// E3Studio :: UI :: WebSocketClient
-// C++ backend ile bağlantı yönetimi.
-// Otomatik yeniden bağlanma, mesaj kuyruğu, tip güvenli mesajlaşma.
-// ─────────────────────────────────────────────────────────────────────────────
+import i18n from './i18n'
 import { useStore } from '@/store/useStore'
 
 type MessageCallback = (data: any) => void
@@ -22,8 +18,8 @@ class WSClient {
     this.ws = new WebSocket(this.url)
 
     this.ws.onopen = () => {
-      console.log('[E3] Backend bağlantısı kuruldu')
-      useStore.getState().pushNotification('success', 'Backend bağlantısı kuruldu')
+      console.log(i18n.t('console.connected'))
+      useStore.getState().pushNotification('success', i18n.t('notify.connected'))
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer)
         this.reconnectTimer = null
@@ -35,21 +31,20 @@ class WSClient {
         const msg = JSON.parse(event.data)
         this.dispatch(msg)
       } catch (e) {
-        console.error('[E3] JSON parse hatası:', e)
+        console.error(i18n.t('console.parse_error'), e)
       }
     }
 
     this.ws.onclose = () => {
-      console.warn('[E3] Bağlantı kesildi, 2s sonra yeniden denenecek...')
+      console.warn(i18n.t('console.reconnecting'))
       this.reconnectTimer = setTimeout(() => this.connect(), 2000)
     }
 
     this.ws.onerror = (err) => {
-      console.error('[E3] WebSocket hatası:', err)
+      console.error(i18n.t('console.ws_error'), err)
     }
   }
 
-  // Mesaj gönder + yanıt bekle (Promise tabanlı)
   async send<T = any>(type: string, payload: any = {}): Promise<T> {
     const id = crypto.randomUUID()
     return new Promise((resolve, reject) => {
@@ -57,7 +52,7 @@ class WSClient {
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id)
-          reject(new Error(`Zaman aşımı: ${type}`))
+          reject(new Error(i18n.t('notify.timeout', { type })))
         }
       }, 30000)
 
@@ -65,12 +60,11 @@ class WSClient {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.ws.send(msg)
       } else {
-        reject(new Error('WebSocket bağlı değil'))
+        reject(new Error(i18n.t('notify.not_connected')))
       }
     })
   }
 
-  // Push event dinle
   on(type: string, cb: MessageCallback) {
     if (!this.listeners.has(type)) this.listeners.set(type, [])
     this.listeners.get(type)!.push(cb)
@@ -84,7 +78,6 @@ class WSClient {
   private dispatch(msg: any) {
     const { type, id, data, payload } = msg
 
-    // Beklenen yanıt mı?
     if (id && this.pendingRequests.has(id)) {
       const resolve = this.pendingRequests.get(id)!
       this.pendingRequests.delete(id)
@@ -92,10 +85,8 @@ class WSClient {
       return
     }
 
-    // Push event — store'u güncelle
     this.handlePushEvent(type, payload ?? data ?? msg)
 
-    // Özel listener'lar
     const handlers = this.listeners.get(type)
     if (handlers) handlers.forEach(h => h(payload ?? data))
   }
@@ -105,7 +96,7 @@ class WSClient {
 
     switch (type) {
       case 'system.ready':
-        store.pushNotification('info', 'E3Studio hazır')
+        store.pushNotification('info', i18n.t('notify.ready'))
         break
 
       case 'toolpath.generated':
@@ -114,7 +105,10 @@ class WSClient {
           toolpathId: payload.toolpathId
         })
         store.pushNotification('success',
-          `Toolpath hazır — ${payload.pointCount} nokta, ~${payload.estimatedMinutes?.toFixed(1)} dk`)
+          i18n.t('notify.toolpath_ready', {
+            count: payload.pointCount,
+            time: payload.estimatedMinutes?.toFixed(1)
+          }))
         break
 
       case 'simulation.frame':
@@ -129,7 +123,7 @@ class WSClient {
         break
 
       case 'error':
-        store.pushNotification('error', payload?.message ?? 'Bilinmeyen hata')
+        store.pushNotification('error', payload?.message ?? i18n.t('notify.unknown_error'))
         break
     }
   }

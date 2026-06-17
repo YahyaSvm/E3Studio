@@ -6,7 +6,6 @@ namespace e3::core {
 
 bool Application::initialize() {
     try {
-        Logger::init("logs");
         E3_LOG_INFO("E3Studio başlatılıyor...");
 
         // CPU çekirdek sayısı - 1 iş parçacığı (UI iş parçacığı için yer bırak)

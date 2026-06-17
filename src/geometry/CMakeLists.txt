@@ -11,6 +11,7 @@ target_link_libraries(e3_geometry PUBLIC
     e3_core
     TKernel TKMath TKBRep TKGeomBase TKGeomAlgo
     TKTopAlgo TKPrim TKBO TKShHealing TKMesh
-    TKSTEP TKSTEPBase TKSTL TKIGES
-    TKXSBase TKSTEPAttr TKSTEP209
+    TKOffset
+    TKDESTEP TKDESTL TKDEIGES
+    TKXSBase
 )
