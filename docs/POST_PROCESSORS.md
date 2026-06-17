@@ -1,6 +1,6 @@
 # Post Processor Guide
 
-This document describes how post processors work in E3Studio and how to configure or create custom post processors.
+This document covers post-processors in E3Studio — what is currently implemented, how the code is structured, and how G-Code is generated.
 
 ## Overview
 
@@ -11,201 +11,85 @@ A post processor converts internal toolpath data into controller-specific G-Code
 - Coordinate system selection
 - Unit commands
 - Tool change procedures
-- Coolant control
-- Spindle control
+- Coolant and spindle control
 - File extensions
 
-## Built-in Post Processors
+E3Studio has two separate post-processor systems:
 
-### GRBL
+1. A C# post-processor system used by the WPF desktop app.
+2. A C++ G-Code generator used by the cross-platform C++ backend.
 
-| Setting | Value |
-|---------|-------|
-| Extension | `.gcode` |
-| Line Numbers | No |
-| Tool Change | No |
-| Coolant | No |
-| G54 | No |
-| Spindle | M3/M4/M5 S#### |
+## C# Post Processors (WPF Desktop)
 
-**Use for**: Arduino-based CNC routers, Shapeoko, X-Carve, OpenBuilds
+These are registered in `Services/PostProcessor/PostProcessorBase.cs` and used by the full WPF workflow.
 
-```gcode
-G21
-G90
-M3 S18000
-G1 X10.000 Y5.000 Z-1.500 F800
-G1 X50.000 Y5.000
-G1 X50.000 Y30.000
-M5
-M2
-```
+### Currently implemented
 
-### Klipper
+| Post Processor | Class | Extension | Line Numbers | Tool Change |
+|----------------|-------|-----------|:---:|:---:|
+| **Generic** | `GenericPostProcessor` | `.nc` | No | Yes |
+| **GRBL** | `GrblPostProcessor` | `.nc` | No | No |
+| **Mach3** | `Mach3PostProcessor` | `.tap` | Yes | Yes |
+| **Mach4** | `Mach4PostProcessor` | `.tap` | Yes | Yes |
+| **LinuxCNC** | `LinuxCNCPostProcessor` | `.ngc` | Yes | Yes |
+| **HAAS** | `HaasPostProcessor` | `.nc` | No | Yes |
+| **Mazak** | `MazakPostProcessor` | `.eia` | Yes | Yes |
+| **Fanuc** | `FanucPostProcessor` | `.nc` | Yes | Yes |
 
-| Setting | Value |
-|---------|-------|
-| Extension | `.gcode` |
-| Line Numbers | No |
-| Tool Change | No |
-| Coolant | No |
-| G54 | No |
+Each class extends `PostProcessorBase` and overrides `GenerateHeader`, `GenerateSetup`, `GenerateToolpath`, and `GenerateFooter`.
 
-**Use for**: 3D printer CNC conversions, Klipper-based routers
+### Dialog-only presets
 
-### Mach3/4
+The Post Processor Manager dialog (`PostProcessorDialog.xaml.cs`) also lists these as presets, but they currently have no dedicated C# class behind them:
 
-| Setting | Value |
-|---------|-------|
-| Extension | `.tap` |
-| Line Numbers | Yes (N####) |
-| Tool Change | Yes (M6) |
-| Coolant | Yes (M7/M8/M9) |
-| G54 | Yes |
+- **Klipper** — Extension `.gcode`, no line numbers, no tool change
+- **Heidenhain TNC** — Extension `.h`, uses `TOOL CALL` syntax
+- **Siemens Sinumerik** — Extension `.mpf`, Siemens-style program structure
 
-**Use for**: Mach3/4 controlled machines, most hobby CNC setups
+These use a fallback generic generator. To add dedicated classes, create a new class in `Services/PostProcessor/` extending `PostProcessorBase` and register it in the factory dictionary.
 
-```gcode
-%
-O0001 (E3Studio Output)
-(Tool: 3mm End Mill)
-N10 G21 G90 G17
-N20 G54
-N30 M6 T1 (3mm End Mill)
-N40 M3 S18000
-N50 G43 H1 Z25.0
-N60 G0 X10.000 Y5.000
-N70 G1 Z-1.500 F800
-N80 G1 X50.000 Y5.000
-N90 G1 X50.000 Y30.000
-N100 G0 Z25.0
-N110 M5
-N120 M9
-N130 M30
-%
-```
+## C++ G-Code Generator (Backend)
 
-### LinuxCNC
+The C++ backend at `src/postprocessor/GCodeGenerator.cpp` generates G-Code using a `PostConfig` struct approach rather than a class hierarchy.
 
-| Setting | Value |
-|---------|-------|
-| Extension | `.ngc` |
-| Line Numbers | Yes |
-| Tool Change | Yes |
-| Coolant | Yes |
-| G54 | Yes |
+### Available configurations
 
-**Use for**: LinuxCNC-powered machines, open-source industrial setups
+| Config ID | Name | Dialect | Line Numbers | Tool Change |
+|-----------|------|---------|:---:|:---:|
+| `fanuc` | Fanuc | Fanuc | Yes | Yes |
+| `heidenhain` | Heidenhain iTNC | Heidenhain | Yes | Yes |
+| `haas` | Haas | Haas | Yes | Yes |
+| `generic` | Generic ISO | Generic | No | No |
 
-### Fanuc
+The WebSocket API in `src/api/MessageHandler.cpp` currently selects from these via `toolpath.export`:
 
-| Setting | Value |
-|---------|-------|
-| Extension | `.nc` |
-| Line Numbers | Yes (N####) |
-| Tool Change | Yes (M6) |
-| Coolant | Yes |
-| G54 | Yes |
-| Program Number | Yes (O####) |
+- `"fanuc"` — uses the Fanuc config
+- `"heidenhain"` — uses the Heidenhain config
+- anything else — falls back to `generic` config
 
-**Use for**: Fanuc-controlled CNC mills and routers
+`haas()` is defined in `posts::haas()` but the API handler does not yet select it. `siemens840d()` is declared in the header (`GCodeGenerator.h`) but is not yet implemented in `GCodeGenerator.cpp`.
 
-```gcode
-O0001
-(PROGRAM: E3Studio Output)
-(TOOL: T1 - 3mm End Mill)
-N10 G90 G94 G17 G21
-N20 G28 G91 Z0.
-N30 G28 G91 X0. Y0.
-N40 G91 G28 Z0.
-N50 G90
-N60 G54
-N70 T1 M6
-N80 G43 H1 Z50.
-N90 M3 S18000
-N100 G0 X10.000 Y5.000
-N110 Z5.0
-N120 G1 Z-1.500 F800
-N130 G1 X50.000 Y5.000
-N140 G1 X50.000 Y30.000
-N150 G0 Z50.0
-N160 M5
-N170 M9
-N180 G28 G91 Z0.
-N190 G28 G91 X0. Y0.
-N200 M30
-%
-```
+### How it works
 
-### Haas
+The C++ generator writes:
 
-| Setting | Value |
-|---------|-------|
-| Extension | `.nc` |
-| Line Numbers | Yes |
-| Tool Change | Yes |
-| Coolant | Yes |
-| G54 | Yes |
+- Header with program number, tool/machine name, G17/G40/G49/G80/G90/G21
+- Tool change with optional M06 and diameter/corner radius comment
+- Spindle on (S + M03/M04)
+- Coolant on (M08)
+- Each move formatted as G0/G1/G2/G3 with coordinates and feed rate
+- Coolant off (M09)
+- Footer with G91 G28, M30, and %
 
-**Use for**: Haas CNC mills (Mini Mill, Toolroom Mill, VF series)
+Move types supported:
 
-### Heidenhain
+- `Rapid` → G0
+- `Feed` / `PlungeFeed` → G1
+- `ArcCW` → G2 (IJK)
+- `ArcCCW` → G3 (IJK)
+- `Retract` → G0 Z only
 
-| Setting | Value |
-|---------|-------|
-| Extension | `.h` |
-| Line Numbers | Yes |
-| Tool Change | Yes (TOOL CALL) |
-| Coolant | Yes |
-
-**Use for**: Heidenhain TNC controllers
-
-```gcode
-BEGIN PGM 1 MM
-BLK FORM 0.1 Z X+0 Y+0 Z+0
-BLK FORM 0.2 Z X+300 Y+200 Z-18
-TOOL CALL 1 Z S18000
-L Z+25 R0 FMAX
-L X+10 Y+5 R0 FMAX
-L Z-1.5 F800
-L X+50 F800
-L Y+30
-L Z+25 R0 FMAX
-TOOL CALL DEF Z
-END PGM 1 MM
-```
-
-### Sinumerik
-
-| Setting | Value |
-|---------|-------|
-| Extension | `.mpf` |
-| Line Numbers | Yes |
-| Tool Change | Yes |
-| Coolant | Yes |
-
-**Use for**: Siemens Sinumerik controllers (808D, 828D, 840D)
-
-## Post Processor Options
-
-When exporting, you can configure these options:
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `lineNumbers` | bool | Include N#### line numbers |
-| `coordinateSystem` | string | G54, G55, G56, etc. |
-| `units` | string | `metric` (G21) or `imperial` (G20) |
-| `absolute` | bool | G90 absolute (true) or G91 incremental (false) |
-| `programNumber` | int | O#### program number |
-| `toolChangeEnabled` | bool | Enable M6 tool change |
-| `spindleWarmupTime` | float | Seconds to wait after spindle start |
-| `coolantEnabled` | bool | Enable M7/M8/M9 coolant |
-| `safeZ` | float | Safe Z height for rapid moves (mm) |
-| `retractZ` | float | Retract Z between cuts (mm) |
-
-## Creating a Custom Post Processor
-
-### C# (WPF Client)
+## Creating a Custom C# Post Processor
 
 ```csharp
 using E3Studio.Services.PostProcessor;
@@ -213,138 +97,169 @@ using E3Studio.Services.PostProcessor;
 public class MyControllerPostProcessor : PostProcessorBase
 {
     public override string Name => "My Controller";
-    public override string Extension => ".mc";
+    public override string Description => "Custom controller for ...";
+    public override string FileExtension => ".mc";
 
-    public override string GenerateHeader(PostProcessorOptions options)
+    public override bool UseLineNumbers => true;
+    public override int LineNumberIncrement => 10;
+    public override string CommentStart => ";";
+    public override string CommentEnd => "";
+
+    protected override void GenerateHeader(StringBuilder sb, Project project, List<Toolpath> toolpaths)
     {
-        var lines = new List<string>();
-        lines.Add("(Generated by E3Studio)");
-        lines.Add($"(Date: {DateTime.Now:yyyy-MM-dd HH:mm})");
-
-        if (options.Units == "metric")
-            lines.Add("G21");
-        else
-            lines.Add("G20");
-
-        lines.Add("G90"); // Absolute
-        lines.Add("G17"); // XY plane
-
-        return string.Join("\n", lines);
+        sb.AppendLine("; Generated by E3Studio");
+        sb.AppendLine($"; Project: {project.Root.Name}");
     }
 
-    public override string GenerateToolChange(Tool tool, PostProcessorOptions options)
+    protected override void GenerateSetup(StringBuilder sb)
     {
-        var lines = new List<string>();
-        lines.Add($"T{tool.Id} M6 ({tool.Name})");
-        lines.Add($"M3 S{tool.SpindleSpeed}");
-        lines.Add($"G43 H{tool.Id} Z{options.SafeZ}");
-        return string.Join("\n", lines);
+        sb.AppendLine("G21 G90 G17");
+        sb.AppendLine("G54");
     }
 
-    public override string GenerateFooter(PostProcessorOptions options)
+    protected override void GenerateToolpath(StringBuilder sb, Toolpath toolpath, Stock stock)
     {
-        var lines = new List<string>();
-        lines.Add($"G0 Z{options.SafeZ}");
-        lines.Add("M5"); // Spindle stop
-        lines.Add("M9"); // Coolant off
-        lines.Add("M30"); // Program end
-        return string.Join("\n", lines);
+        if (toolpath.Tool != null)
+        {
+            sb.AppendLine($"T{toolpath.Tool.Number} M6 ({toolpath.Tool.Name})");
+            sb.AppendLine($"M3 S{toolpath.SpindleRPM}");
+        }
+
+        if (toolpath.Moves != null)
+        {
+            foreach (var move in toolpath.Moves)
+            {
+                switch (move.Type)
+                {
+                    case MoveType.Rapid:
+                        Rapid(sb, move.X, move.Y, move.Z);
+                        break;
+                    case MoveType.Linear:
+                    case MoveType.Feed:
+                        Linear(sb, move.X, move.Y, move.Z, move.F > 0 ? move.F : toolpath.FeedRate);
+                        break;
+                    case MoveType.ArcCW:
+                        Arc(sb, true, move.X, move.Y, move.I, move.J, move.F > 0 ? move.F : toolpath.FeedRate);
+                        break;
+                    case MoveType.ArcCCW:
+                        Arc(sb, false, move.X, move.Y, move.I, move.J, move.F > 0 ? move.F : toolpath.FeedRate);
+                        break;
+                }
+            }
+        }
+    }
+
+    protected override void GenerateFooter(StringBuilder sb)
+    {
+        sb.AppendLine("M5");
+        sb.AppendLine("M30");
     }
 }
 ```
 
-### C++ (Backend)
+Then register it in `PostProcessorBase.cs`:
+
+```csharp
+{ "MyController", () => new MyControllerPostProcessor() },
+```
+
+## Creating a Custom C++ Post Config
+
+The C++ generator uses a data-oriented approach via the `PostConfig` struct.
 
 ```cpp
-// src/postprocessor/MyControllerPostProcessor.h
-#pragma once
-#include "PostProcessorBase.h"
+#include "GCodeGenerator.h"
 
-namespace e3::postprocessor {
+namespace e3::postprocessor::posts {
 
-class MyControllerPostProcessor : public PostProcessorBase {
-public:
-    std::string name() const override { return "My Controller"; }
-    std::string extension() const override { return ".mc"; }
+PostConfig myController() {
+    return {
+        "my-controller",          // id
+        "My Controller",          // name
+        "\n",                     // lineEndChar
+        true,                     // useLineNumbers
+        10,                       // lineNumberStart
+        true,                     // useToolChange
+        false,                    // useCoolant
+        3,                        // decimalPlaces
+        25.0,                     // safeZ
+        10000.0,                  // maxSpindle
+        PostConfig::Dialect::Generic
+    };
+}
 
-    std::string generateHeader(const Options& opts) const override {
-        std::ostringstream ss;
-        ss << "(Generated by E3Studio)\n";
-        ss << (opts.metric ? "G21\n" : "G20\n");
-        ss << "G90\n";
-        return ss.str();
-    }
-
-    std::string generateFooter(const Options& opts) const override {
-        return fmt::format("G0 Z{:.3f}\nM5\nM9\nM30\n", opts.safeZ);
-    }
-};
-
-} // namespace e3::postprocessor
+} // namespace posts
 ```
+
+Then add the routing in `MessageHandler.cpp` to support it in the API.
+
+## Post Processor Options
+
+The C# system supports these options:
+
+- `lineNumbers` — Include N#### line numbers
+- `coordinateSystem` — G54, G55, G56, etc.
+- `units` — `metric` or `imperial`
+- `absolute` — G90 absolute or G91 incremental
+- `programNumber` — O#### program number
+- `toolChangeEnabled` — Enable M6 tool change
+- `spindleWarmupTime` — Seconds to wait after spindle start
+- `coolantEnabled` — Enable M7/M8/M9 coolant
+- `safeZ` — Safe Z height for rapid moves (mm)
+- `retractZ` — Retract Z between cuts (mm)
+
+The C++ generator uses the same concepts embedded in each `PostConfig` struct.
 
 ## G-Code Command Reference
 
 ### Motion Commands
 
-| Command | Description |
-|---------|-------------|
-| `G0` | Rapid move (non-cutting) |
-| `G1` | Linear feed move (cutting) |
-| `G2` | Circular interpolation CW |
-| `G3` | Circular interpolation CCW |
-| `G4 P####` | Dwell (pause) for P milliseconds |
+- `G0` — Rapid move (non-cutting)
+- `G1` — Linear feed move (cutting)
+- `G2` — Circular interpolation CW
+- `G3` — Circular interpolation CCW
+- `G4 P####` — Dwell (pause) for P milliseconds
 
 ### Plane & Units
 
-| Command | Description |
-|---------|-------------|
-| `G17` | XY plane selection |
-| `G18` | XZ plane selection |
-| `G19` | YZ plane selection |
-| `G20` | Imperial units (inches) |
-| `G21` | Metric units (mm) |
-| `G90` | Absolute positioning |
-| `G91` | Incremental positioning |
+- `G17` — XY plane selection
+- `G18` — XZ plane selection
+- `G19` — YZ plane selection
+- `G20` — Imperial units (inches)
+- `G21` — Metric units (mm)
+- `G90` — Absolute positioning
+- `G91` — Incremental positioning
 
 ### Coordinate Systems
 
-| Command | Description |
-|---------|-------------|
-| `G54` | Work coordinate system 1 |
-| `G55` | Work coordinate system 2 |
-| `G56` | Work coordinate system 3 |
-| `G57` | Work coordinate system 4 |
-| `G58` | Work coordinate system 5 |
-| `G59` | Work coordinate system 6 |
+- `G54` — Work coordinate system 1
+- `G55` — Work coordinate system 2
+- `G56` — Work coordinate system 3
+- `G57` — Work coordinate system 4
+- `G58` — Work coordinate system 5
+- `G59` — Work coordinate system 6
 
 ### Tool & Spindle
 
-| Command | Description |
-|---------|-------------|
-| `T#` | Select tool number |
-| `M6` | Execute tool change |
-| `M3 S####` | Spindle CW at speed RPM |
-| `M4 S####` | Spindle CCW at speed RPM |
-| `M5` | Spindle stop |
-| `G43 H#` | Tool length offset positive |
-| `G49` | Cancel tool length offset |
+- `T#` — Select tool number
+- `M6` — Execute tool change
+- `M3 S####` — Spindle CW at speed RPM
+- `M4 S####` — Spindle CCW at speed RPM
+- `M5` — Spindle stop
+- `G43 H#` — Tool length offset positive
+- `G49` — Cancel tool length offset
 
 ### Coolant
 
-| Command | Description |
-|---------|-------------|
-| `M7` | Mist coolant on |
-| `M8` | Flood coolant on |
-| `M9` | All coolant off |
+- `M7` — Mist coolant on
+- `M8` — Flood coolant on
+- `M9` — All coolant off
 
 ### Program Control
 
-| Command | Description |
-|---------|-------------|
-| `M0` | Program pause |
-| `M1` | Optional stop |
-| `M2` | Program end |
-| `M30` | Program end and rewind |
-| `O####` | Program number (Fanuc) |
-| `%` | Program start/end marker |
+- `M0` — Program pause
+- `M1` — Optional stop
+- `M2` — Program end
+- `M30` — Program end and rewind
+- `O####` — Program number (Fanuc)
+- `%` — Program start/end marker
