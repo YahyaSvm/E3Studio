@@ -62,7 +62,7 @@ jobs:
           npm run build
 
       - name: Build WPF Client
-        run: dotnet publish E3Studio.csproj -c Release -o publish
+        run: dotnet publish E3Studio.csproj -c Release -o publish /p:Deterministic=false
 
       - name: Package Release
         run: |

@@ -73,7 +73,7 @@ jobs:
           npm run build
 
       - name: Build WPF Client
-        run: dotnet build E3Studio.csproj -c Release
+        run: dotnet build E3Studio.csproj -c Release /p:Deterministic=false
 
       - name: Run Tests
         run: dotnet test E3Studio.csproj -c Release --no-build --verbosity normal || true
