@@ -73,10 +73,10 @@ jobs:
           npm run build
 
       - name: Build WPF Client
-        run: dotnet build -c Release
+        run: dotnet build E3Studio.csproj -c Release
 
       - name: Run Tests
-        run: dotnet test -c Release --no-build --verbosity normal || true
+        run: dotnet test E3Studio.csproj -c Release --no-build --verbosity normal || true
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
