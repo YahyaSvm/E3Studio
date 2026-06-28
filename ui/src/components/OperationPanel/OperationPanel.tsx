@@ -4,6 +4,7 @@ import { useStore, Operation } from '@/store/useStore'
 import ws from '@/lib/wsClient'
 import { Play, Trash2, Plus, Cpu, ChevronRight } from 'lucide-react'
 import clsx from 'clsx'
+import { applyToolpathVisualization } from '@/lib/toolpathViz'
 
 const OP_TYPE_LABELS: Record<string, string> = {
   Pocket2D: 'operation_type.Pocket2D',
@@ -20,8 +21,18 @@ function OperationCard({ op }: { op: Operation }) {
 
   const compute = async () => {
     useStore.getState().setLoading(true, t('operation_panel.loading_toolpath'))
-    await ws.send('operation.compute', { operationId: op.id })
-    useStore.getState().setLoading(false)
+    try {
+      const result = await ws.send('operation.compute', { operationId: op.id })
+      if (result?.toolpathId) {
+        useStore.getState().updateOperation(op.id, {
+          isDirty: false,
+          toolpathId: result.toolpathId,
+        })
+        applyToolpathVisualization(op.id, result)
+      }
+    } finally {
+      useStore.getState().setLoading(false)
+    }
   }
 
   const aiOptimize = async () => {
@@ -122,10 +133,13 @@ export default function OperationPanel() {
 
   const addOperation = async () => {
     const name = `${t('operation_panel.operation')} ${operations.length + 1}`
+    const tools = useStore.getState().tools
+    const models = useStore.getState().models
     const result = await ws.send('operation.add', {
       name,
       type: 'Pocket2D',
-      toolId: '',
+      toolId: tools[0]?.id ?? '',
+      geometryRef: models[0]?.id ?? '',
       feedrateXY: 1200,
       feedrateZ: 400,
       spindleSpeed: 8000,

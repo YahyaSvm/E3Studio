@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 #include "ProjectManager.h"
 #include "Logger.h"
+#include "JsonEnums.h"
 #include <fstream>
 #include <sstream>
 #include <chrono>
@@ -33,7 +34,7 @@ Tool Tool::fromJson(const nlohmann::json& j) {
     Tool t;
     t.id            = j.value("id", "");
     t.name          = j.value("name", "");
-    t.type          = static_cast<Tool::Type>(j.value("type", 0));
+    t.type          = parseToolType(j);
     t.diameter      = j.value("diameter", 10.0);
     t.cornerRadius  = j.value("cornerRadius", 0.0);
     t.flutes        = j.value("flutes", 4.0);
@@ -47,6 +48,7 @@ nlohmann::json Operation::toJson() const {
     return {
         {"id", id}, {"name", name},
         {"type", static_cast<int>(type)},
+        {"typeName", operationTypeName(type)},
         {"toolId", toolId},
         {"geometryRef", geometryRef},
         {"feedrateXY", feedrateXY}, {"feedrateZ", feedrateZ},
@@ -61,7 +63,7 @@ Operation Operation::fromJson(const nlohmann::json& j) {
     Operation op;
     op.id           = j.value("id", "");
     op.name         = j.value("name", "");
-    op.type         = static_cast<Operation::Type>(j.value("type", 0));
+    op.type         = parseOperationType(j);
     op.toolId       = j.value("toolId", "");
     op.geometryRef  = j.value("geometryRef", "");
     op.feedrateXY   = j.value("feedrateXY", 1200.0);
@@ -71,9 +73,54 @@ Operation Operation::fromJson(const nlohmann::json& j) {
     op.stepover     = j.value("stepover", 4.0);
     op.stockToLeave = j.value("stockToLeave", 0.0);
     op.tolerance    = j.value("tolerance", 0.01);
-    op.isDirty      = true;
+    op.isDirty      = j.value("isDirty", true);
     op.toolpathId   = j.value("toolpathId", "");
     return op;
+}
+
+nlohmann::json modelRefToJson(const ModelRef& m) {
+    return {
+        {"id", m.id},
+        {"filePath", m.filePath},
+        {"role", modelRoleName(m.role)},
+        {"transform", m.transform}
+    };
+}
+
+ModelRef modelRefFromJson(const nlohmann::json& j) {
+    ModelRef m;
+    m.id = j.value("id", "");
+    m.filePath = j.value("filePath", "");
+    m.role = parseModelRole(j.value("role", "workpiece"));
+    if (j.contains("transform") && j["transform"].is_array()) {
+        for (size_t i = 0; i < m.transform.size() && i < j["transform"].size(); ++i)
+            m.transform[i] = j["transform"][i].get<double>();
+    }
+    return m;
+}
+
+nlohmann::json machineToJson(const MachineConfig& mc) {
+    return {
+        {"id", mc.id},
+        {"name", mc.name},
+        {"axes", mc.axes},
+        {"maxFeedXY", mc.maxFeedXY},
+        {"maxFeedZ", mc.maxFeedZ},
+        {"maxSpindle", mc.maxSpindle},
+        {"postProcessorId", mc.postProcessorId}
+    };
+}
+
+MachineConfig machineFromJson(const nlohmann::json& j) {
+    MachineConfig mc;
+    mc.id = j.value("id", "default");
+    mc.name = j.value("name", "3-Axis Mill");
+    mc.axes = j.value("axes", 3);
+    mc.maxFeedXY = j.value("maxFeedXY", 5000.0);
+    mc.maxFeedZ = j.value("maxFeedZ", 2000.0);
+    mc.maxSpindle = j.value("maxSpindle", 24000.0);
+    mc.postProcessorId = j.value("postProcessorId", j.value("postProcessor", "fanuc"));
+    return mc;
 }
 
 nlohmann::json Project::toJson() const {
@@ -92,6 +139,12 @@ nlohmann::json Project::toJson() const {
     for (const auto& op : operations) opsArr.push_back(op.toJson());
     j["operations"] = opsArr;
 
+    json modelsArr = json::array();
+    for (const auto& m : models) modelsArr.push_back(modelRefToJson(m));
+    j["models"] = modelsArr;
+
+    j["machine"] = machineToJson(machine);
+
     return j;
 }
 
@@ -106,6 +159,10 @@ Project Project::fromJson(const nlohmann::json& j) {
         p.toolLibrary.push_back(Tool::fromJson(jt));
     for (const auto& jo : j.value("operations", json::array()))
         p.operations.push_back(Operation::fromJson(jo));
+    for (const auto& jm : j.value("models", json::array()))
+        p.models.push_back(modelRefFromJson(jm));
+    if (j.contains("machine"))
+        p.machine = machineFromJson(j["machine"]);
     return p;
 }
 
@@ -127,6 +184,17 @@ void ProjectManager::newProject(const std::string& name) {
     m_project = std::make_unique<Project>();
     m_project->id   = genId();
     m_project->name = name;
+    m_project->machine = MachineConfig{};
+    m_project->machine.id = "default";
+    m_project->machine.name = "3-Axis Mill";
+
+    Tool defaultTool;
+    defaultTool.id = genId();
+    defaultTool.name = "6mm Flat Endmill";
+    defaultTool.type = Tool::Type::FlatEndmill;
+    defaultTool.diameter = 6.0;
+    m_project->toolLibrary.push_back(defaultTool);
+
     E3_LOG_INFO("Yeni proje oluşturuldu: {}", name);
 }
 
@@ -221,6 +289,27 @@ std::string ProjectManager::addModel(ModelRef model) {
     if (model.id.empty()) model.id = genId();
     m_project->models.push_back(model);
     return model.id;
+}
+
+bool ProjectManager::removeTool(const std::string& id) {
+    if (!m_project) return false;
+    auto& tools = m_project->toolLibrary;
+    auto it = std::find_if(tools.begin(), tools.end(), [&](const Tool& t){ return t.id == id; });
+    if (it == tools.end()) return false;
+    tools.erase(it);
+    return true;
+}
+
+bool ProjectManager::updateTool(const std::string& id, Tool tool) {
+    if (!m_project) return false;
+    for (auto& t : m_project->toolLibrary) {
+        if (t.id == id) {
+            tool.id = id;
+            t = std::move(tool);
+            return true;
+        }
+    }
+    return false;
 }
 
 std::vector<std::string> ProjectManager::getDirtyOperationIds() const {

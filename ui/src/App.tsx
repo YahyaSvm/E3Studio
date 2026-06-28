@@ -5,6 +5,9 @@ import { useStore } from '@/store/useStore'
 import Toolbar from '@/components/Toolbar/Toolbar'
 import Viewport3D from '@/components/Viewport3D/Viewport3D'
 import OperationPanel from '@/components/OperationPanel/OperationPanel'
+import ToolPanel from '@/components/ToolPanel/ToolPanel'
+import SimulationPanel from '@/components/SimulationPanel/SimulationPanel'
+import ExportPanel from '@/components/ExportPanel/ExportPanel'
 import { CheckCircle, XCircle, AlertTriangle, Info, X, Loader2 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -73,9 +76,9 @@ export default function App() {
           <Panel defaultSize={22} minSize={16} maxSize={35}>
             <div className="h-full bg-[#111111] border-r border-white/8">
               {activePanel === 'operations' && <OperationPanel />}
-              {activePanel === 'simulation' && (
-                <div className="p-4 text-white/50 text-sm">{t('app.simulation_panel')}</div>
-              )}
+              {activePanel === 'tools' && <ToolPanel />}
+              {activePanel === 'simulation' && <SimulationPanel />}
+              {activePanel === 'export' && <ExportPanel />}
               {activePanel === 'ai' && (
                 <div className="p-4 text-white/50 text-sm">{t('app.ai_panel')}</div>
               )}

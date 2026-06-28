@@ -4,6 +4,8 @@ add_library(e3_toolpath STATIC
     operations/ContourOperation.cpp
     operations/AdaptiveClearingOperation.cpp
     operations/SurfaceFinishingOperation.cpp
+    operations/DrillingOperation.cpp
+    operations/ThreadingOperation.cpp
     Offsetter.cpp
     PathOptimizer.cpp
 )

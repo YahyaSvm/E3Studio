@@ -76,15 +76,15 @@ jobs:
         run: dotnet build E3Studio.csproj -c Release /p:Deterministic=false
 
       - name: Run Tests
-        run: dotnet test E3Studio.csproj -c Release --no-build --verbosity normal || true
+        run: dotnet test tests/E3Studio.Tests/E3Studio.Tests.csproj -c Release --verbosity normal
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: E3Studio-windows-x64
           path: |
-            build/${{ env.BUILD_TYPE }}/E3Studio.exe
-            build/${{ env.BUILD_TYPE }}/*.dll
+            build/bin/${{ env.BUILD_TYPE }}/E3Studio.exe
+            build/bin/${{ env.BUILD_TYPE }}/*.dll
             ui/dist/
             bin/Release/net10.0-windows/
 
@@ -251,8 +251,11 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════
   # macOS Build (Intel)
   # ═══════════════════════════════════════════════════════════════════════════
+  # macOS Intel builds are disabled — GitHub-hosted macos-13 runners are
+  # frequently unavailable and block CI for 24h waiting in queue.
   build-macos-x64:
     name: macOS x64 (Intel)
+    if: false
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4

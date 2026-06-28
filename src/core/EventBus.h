@@ -91,11 +91,13 @@ struct ProjectOpenedEvent : Event {
 
 struct ToolpathGeneratedEvent : Event {
     std::string operationId;
+    std::string toolpathId;
     size_t pointCount;
     double estimatedTime; // dakika
 
-    ToolpathGeneratedEvent(std::string opId, size_t ptCount, double estTime)
-        : operationId(std::move(opId)), pointCount(ptCount), estimatedTime(estTime) {}
+    ToolpathGeneratedEvent(std::string opId, std::string tpId, size_t ptCount, double estTime)
+        : operationId(std::move(opId)), toolpathId(std::move(tpId)),
+          pointCount(ptCount), estimatedTime(estTime) {}
 };
 
 struct SimulationStepEvent : Event {

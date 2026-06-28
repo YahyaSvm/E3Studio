@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using E3Studio.Services;
@@ -197,9 +201,15 @@ public partial class PostProcessorDialog : Window
         {
             try
             {
-                // TODO: Implement post processor import from file
-                MessageBox.Show("Post processor import coming soon!\n\nYou can manually configure a new post processor using the '+ New' button.", 
-                    "Import Post Processor", MessageBoxButton.OK, MessageBoxImage.Information);
+                var json = File.ReadAllText(dialog.FileName);
+                var imported = JsonSerializer.Deserialize<PostProcessorInfo>(json);
+                if (imported == null)
+                    throw new InvalidOperationException("Invalid post processor file.");
+                imported.IsBuiltIn = false;
+                _postProcessors.Add(imported);
+                RefreshList();
+                MessageBox.Show($"Imported post processor: {imported.Name}", "Import Post Processor",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -227,8 +237,10 @@ public partial class PostProcessorDialog : Window
         {
             try
             {
-                // TODO: Implement post processor export to file
-                MessageBox.Show("Post processor export coming soon!", 
+                SyncDetailsToSelected();
+                var json = JsonSerializer.Serialize(_selectedPostProcessor, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(dialog.FileName, json);
+                MessageBox.Show($"Exported post processor: {_selectedPostProcessor.Name}",
                     "Export Post Processor", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -238,38 +250,43 @@ public partial class PostProcessorDialog : Window
         }
     }
     
+    private void SyncDetailsToSelected()
+    {
+        if (_selectedPostProcessor == null) return;
+
+        _selectedPostProcessor.Name = TxtName.Text;
+        _selectedPostProcessor.Version = TxtVersion.Text;
+        _selectedPostProcessor.Description = TxtDescription.Text;
+        _selectedPostProcessor.Controller = TxtController.Text;
+        _selectedPostProcessor.FileExtension = TxtFileExtension.Text;
+
+        _selectedPostProcessor.UseLineNumbers = ChkLineNumbers.IsChecked ?? false;
+        _selectedPostProcessor.UseG54 = ChkG54.IsChecked ?? false;
+        _selectedPostProcessor.UseG90 = ChkG90.IsChecked ?? false;
+        _selectedPostProcessor.UseMetric = ChkG21.IsChecked ?? false;
+
+        _selectedPostProcessor.SupportToolChange = ChkToolChange.IsChecked ?? false;
+        _selectedPostProcessor.ToolChangeCommand = TxtToolChangeCmd.Text;
+        _selectedPostProcessor.SpindleWarmupTime = double.TryParse(TxtSpindleWarmup.Text, out var sw) ? sw : 3.0;
+
+        _selectedPostProcessor.SupportCoolant = ChkCoolant.IsChecked ?? false;
+        _selectedPostProcessor.CoolantOnCommand = TxtCoolantOn.Text;
+        _selectedPostProcessor.CoolantOffCommand = TxtCoolantOff.Text;
+
+        _selectedPostProcessor.SpindleCwCommand = TxtSpindleCw.Text;
+        _selectedPostProcessor.SpindleCcwCommand = TxtSpindleCcw.Text;
+        _selectedPostProcessor.SpindleStopCommand = TxtSpindleStop.Text;
+
+        _selectedPostProcessor.ProgramEndCommand = TxtProgramEnd.Text;
+        _selectedPostProcessor.HeaderGCode = TxtHeader.Text;
+        _selectedPostProcessor.FooterGCode = TxtFooter.Text;
+    }
+
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedPostProcessor != null && !_selectedPostProcessor.IsBuiltIn)
         {
-            _selectedPostProcessor.Name = TxtName.Text;
-            _selectedPostProcessor.Version = TxtVersion.Text;
-            _selectedPostProcessor.Description = TxtDescription.Text;
-            _selectedPostProcessor.Controller = TxtController.Text;
-            _selectedPostProcessor.FileExtension = TxtFileExtension.Text;
-            
-            _selectedPostProcessor.UseLineNumbers = ChkLineNumbers.IsChecked ?? false;
-            _selectedPostProcessor.UseG54 = ChkG54.IsChecked ?? false;
-            _selectedPostProcessor.UseG90 = ChkG90.IsChecked ?? false;
-            _selectedPostProcessor.UseMetric = ChkG21.IsChecked ?? false;
-            
-            _selectedPostProcessor.SupportToolChange = ChkToolChange.IsChecked ?? false;
-            _selectedPostProcessor.ToolChangeCommand = TxtToolChangeCmd.Text;
-            _selectedPostProcessor.SpindleWarmupTime = double.TryParse(TxtSpindleWarmup.Text, out var sw) ? sw : 3.0;
-            
-            _selectedPostProcessor.SupportCoolant = ChkCoolant.IsChecked ?? false;
-            _selectedPostProcessor.CoolantOnCommand = TxtCoolantOn.Text;
-            _selectedPostProcessor.CoolantOffCommand = TxtCoolantOff.Text;
-            
-            _selectedPostProcessor.SpindleCwCommand = TxtSpindleCw.Text;
-            _selectedPostProcessor.SpindleCcwCommand = TxtSpindleCcw.Text;
-            _selectedPostProcessor.SpindleStopCommand = TxtSpindleStop.Text;
-            
-            _selectedPostProcessor.ProgramEndCommand = TxtProgramEnd.Text;
-            
-            _selectedPostProcessor.HeaderGCode = TxtHeader.Text;
-            _selectedPostProcessor.FooterGCode = TxtFooter.Text;
-            
+            SyncDetailsToSelected();
             SettingsManager.Save();
         }
         

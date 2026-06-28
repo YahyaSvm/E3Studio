@@ -2,7 +2,11 @@
 #include "../core/Application.h"
 #include "../core/EventBus.h"
 #include "operations/PocketOperation.h"
+#include "operations/ContourOperation.h"
+#include "operations/SurfaceFinishingOperation.h"
 #include "operations/AdaptiveClearingOperation.h"
+#include "operations/DrillingOperation.h"
+#include "operations/ThreadingOperation.h"
 #include <thread>
 
 namespace e3::toolpath {
@@ -52,7 +56,7 @@ void ToolpathEngine::computeAllDirty() {
             }
             proj.markOperationClean(id, tpId);
             core::EventBus::instance().publish(core::ToolpathGeneratedEvent{
-                id, nMoves, estTime
+                id, tpId, nMoves, estTime
             });
         }).detach();
     }
@@ -68,8 +72,20 @@ Toolpath ToolpathEngine::computeInternal(
         case core::Operation::Type::Pocket2D:
             operation = std::make_unique<operations::PocketOperation>();
             break;
+        case core::Operation::Type::Contour2D:
+            operation = std::make_unique<operations::ContourOperation>();
+            break;
+        case core::Operation::Type::SurfaceFinishing:
+            operation = std::make_unique<operations::SurfaceFinishingOperation>();
+            break;
         case core::Operation::Type::AdaptiveClearing:
             operation = std::make_unique<operations::AdaptiveClearingOperation>();
+            break;
+        case core::Operation::Type::Drilling:
+            operation = std::make_unique<operations::DrillingOperation>();
+            break;
+        case core::Operation::Type::Threading:
+            operation = std::make_unique<operations::ThreadingOperation>();
             break;
         default:
             E3_LOG_WARN("Bilinmeyen operasyon tipi: {}", static_cast<int>(op.type));
@@ -87,6 +103,11 @@ const Toolpath* ToolpathEngine::getToolpath(const std::string& toolpathId) const
     std::lock_guard<std::mutex> lk(m_cacheMutex);
     auto it = m_cache.find(toolpathId);
     return it != m_cache.end() ? &it->second : nullptr;
+}
+
+void ToolpathEngine::cacheToolpath(Toolpath tp) {
+    std::lock_guard<std::mutex> lk(m_cacheMutex);
+    m_cache[tp.id] = std::move(tp);
 }
 
 // ─── Toolpath::computeStats ───────────────────────────────────────────────

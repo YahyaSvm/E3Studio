@@ -1439,6 +1439,110 @@ public partial class MainWindow : Window
             StatusText.Text = $"Created {toolpath.Type} toolpath: {toolpath.Name} ({toolpath.Moves.Count} moves) - Press GENERATE to preview";
         }
     }
+
+    private Tool GetActiveCamTool()
+    {
+        if (_activeCamTool != null) return _activeCamTool;
+        return new Tool { Number = 1, Diameter = 6, Type = ToolType.Endmill, Name = "Default Endmill" };
+    }
+
+    private void CreateVCarveToolpath_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentProject == null || _multiSelection.Count == 0)
+        {
+            MessageBox.Show("Select paths for V-Carve.", "V-Carve", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var paths = _multiSelection.OfType<PolyPath>().ToList();
+        if (paths.Count == 0)
+        {
+            MessageBox.Show("V-Carve requires vector paths.", "V-Carve", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var tool = GetActiveCamTool();
+        if (tool.Type != ToolType.VBit)
+            tool.VAngle = tool.VAngle > 0 ? tool.VAngle : 60;
+
+        var engine = new VCarveEngine();
+        var settings = new VCarveSettings
+        {
+            MaxDepth = 2.0,
+            SafeHeight = 10.0,
+            FeedRate = 800,
+            PlungeRate = 200,
+            SpindleRPM = 12000
+        };
+
+        var toolpath = engine.GenerateVCarve(paths, settings, tool);
+        _toolpaths.Add(toolpath);
+        UpdateGCodePreview();
+        DrawCanvas();
+        StatusText.Text = $"V-Carve toolpath created ({toolpath.Moves.Count} moves)";
+    }
+
+    private void RunNesting_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentProject == null || _multiSelection.Count == 0)
+        {
+            MessageBox.Show("Select parts to nest.", "Nesting", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var parts = _multiSelection.OfType<PolyPath>().Select((p, i) => new NestingPart
+        {
+            Id = $"part_{i}",
+            Paths = new List<PolyPath> { p },
+            Quantity = 1,
+            AllowRotation = true
+        }).ToList();
+
+        var engine = new NestingEngine();
+        var settings = new NestingSettings
+        {
+            StockWidth = _currentProject.Stock.Width,
+            StockHeight = _currentProject.Stock.Height,
+            Algorithm = NestingAlgorithm.BottomLeftFill
+        };
+
+        var result = engine.Nest(parts, settings);
+        foreach (var placement in result.Placements)
+        {
+            foreach (var path in placement.Part.Paths)
+            {
+                path.X = placement.X;
+                path.Y = placement.Y;
+                path.Rotation = placement.Rotation;
+            }
+        }
+
+        DrawCanvas();
+        StatusText.Text = $"Nested {result.Placements.Count} parts ({result.Efficiency:P0} efficiency)";
+    }
+
+    private void AddTabsToToolpath_Click(object sender, RoutedEventArgs e)
+    {
+        var toolpath = _selectedToolpath ?? _toolpaths.LastOrDefault();
+        if (toolpath == null || toolpath.Moves.Count == 0)
+        {
+            MessageBox.Show("Select or create a toolpath first.", "Tabs", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var generator = new TabGenerator();
+        var settings = new TabSettings
+        {
+            TabCount = toolpath.TabCount > 0 ? toolpath.TabCount : 4,
+            TabWidth = toolpath.TabWidth > 0 ? toolpath.TabWidth : 5,
+            TabHeight = toolpath.TabHeight > 0 ? toolpath.TabHeight : 2
+        };
+
+        toolpath.Moves = generator.AddTabsToMoves(toolpath.Moves, settings, toolpath.FinalDepth);
+        DrawCanvas();
+        UpdateGCodePreview();
+        StatusText.Text = $"Tabs added to {toolpath.Name}";
+    }
     
     private void Update3DToolpaths()
     {
@@ -2839,24 +2943,63 @@ public partial class MainWindow : Window
     private void DrawRulers(double cx, double cy, double spacing)
 
     {
-        // Simple ruler implementation (Top and Left)
-        // TODO: Full implementation with numbers
-        
-        // Ruler Backgrounds
         var rulerBg = new SolidColorBrush(Color.FromRgb(40, 44, 52));
         var rulerText = new SolidColorBrush(Color.FromRgb(150, 150, 150));
         
-        // Top Ruler
         var topRuler = new Rectangle { Height = 20, VerticalAlignment = VerticalAlignment.Top, Fill = rulerBg, Opacity = 0.8 };
         MainCanvas.Children.Add(topRuler);
         Canvas.SetLeft(topRuler, 0); Canvas.SetTop(topRuler, 0);
         topRuler.Width = MainCanvas.ActualWidth;
 
-        // Left Ruler
         var leftRuler = new Rectangle { Width = 20, HorizontalAlignment = HorizontalAlignment.Left, Fill = rulerBg, Opacity = 0.8 };
         MainCanvas.Children.Add(leftRuler);
         Canvas.SetLeft(leftRuler, 0); Canvas.SetTop(leftRuler, 0);
         leftRuler.Height = MainCanvas.ActualHeight;
+
+        if (spacing <= 0) spacing = 10;
+        for (double x = 0; x < MainCanvas.ActualWidth; x += spacing)
+        {
+            var tick = new Line
+            {
+                X1 = x, X2 = x, Y1 = 14, Y2 = 20,
+                Stroke = rulerText, StrokeThickness = 1
+            };
+            MainCanvas.Children.Add(tick);
+            if (Math.Abs(x % (spacing * 5)) < 0.01)
+            {
+                var label = new TextBlock
+                {
+                    Text = ((int)x).ToString(),
+                    Foreground = rulerText,
+                    FontSize = 9
+                };
+                MainCanvas.Children.Add(label);
+                Canvas.SetLeft(label, x + 2);
+                Canvas.SetTop(label, 1);
+            }
+        }
+
+        for (double y = 0; y < MainCanvas.ActualHeight; y += spacing)
+        {
+            var tick = new Line
+            {
+                X1 = 14, X2 = 20, Y1 = y, Y2 = y,
+                Stroke = rulerText, StrokeThickness = 1
+            };
+            MainCanvas.Children.Add(tick);
+            if (Math.Abs(y % (spacing * 5)) < 0.01)
+            {
+                var label = new TextBlock
+                {
+                    Text = ((int)y).ToString(),
+                    Foreground = rulerText,
+                    FontSize = 9
+                };
+                MainCanvas.Children.Add(label);
+                Canvas.SetLeft(label, 1);
+                Canvas.SetTop(label, y + 2);
+            }
+        }
     }
     
     /// <summary>

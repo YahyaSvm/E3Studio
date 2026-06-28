@@ -280,10 +280,17 @@ public class SvgImporter
                         var x = numbers[i++];
                         var y = numbers[i++];
                         var end = relative ? new Point2D(current.X + x, current.Y + y) : new Point2D(x, y);
-                        
-                        // Approximate arc with line for simplicity
-                        // TODO: Proper arc conversion
-                        segments.Add(new LineSegment { EndPoint = end });
+                        var startPt = current;
+                        int segmentsCount = largeArc ? 12 : 8;
+                        for (int s = 1; s <= segmentsCount; s++)
+                        {
+                            double t = (double)s / segmentsCount;
+                            var pt = new Point2D(
+                                startPt.X + (end.X - startPt.X) * t,
+                                startPt.Y + (end.Y - startPt.Y) * t);
+                            segments.Add(new LineSegment { EndPoint = pt });
+                            current = pt;
+                        }
                         current = end;
                     }
                     else return;

@@ -86,5 +86,5 @@ EXPOSE 3000 9001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000 || exit 1
 
-# Run
-CMD ["/app/E3Studio"]
+# Run backend + static UI
+CMD ["/bin/bash", "-c", "/app/E3Studio & exec npx serve /app/ui/dist -p 3000 -s -n"]

@@ -34,6 +34,9 @@ public:
     // Hesaplanan toolpath'e eriş
     const Toolpath* getToolpath(const std::string& toolpathId) const;
 
+    // Hesaplanmış toolpath'i cache'e yaz
+    void cacheToolpath(Toolpath tp);
+
     // Progress callback (0.0-1.0)
     using ProgressCallback = std::function<void(const std::string& opId, float progress)>;
     void setProgressCallback(ProgressCallback cb) { m_progressCb = cb; }

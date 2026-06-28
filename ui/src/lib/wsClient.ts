@@ -1,5 +1,6 @@
 import i18n from './i18n'
 import { useStore } from '@/store/useStore'
+import { applyToolpathVisualization } from '@/lib/toolpathViz'
 
 type MessageCallback = (data: any) => void
 
@@ -104,6 +105,7 @@ class WSClient {
           isDirty: false,
           toolpathId: payload.toolpathId
         })
+        if (payload.points) applyToolpathVisualization(payload.operationId, payload)
         store.pushNotification('success',
           i18n.t('notify.toolpath_ready', {
             count: payload.pointCount,

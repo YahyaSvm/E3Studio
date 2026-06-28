@@ -36,6 +36,11 @@ private:
     json handleToolpathGet    (const json& payload);
     json handleToolpathExport (const json& payload); // G-Code
 
+    json handleToolAdd        (const json& payload);
+    json handleToolUpdate     (const json& payload);
+    json handleToolRemove     (const json& payload);
+    json handleToolList       (const json& payload);
+
     json handleSimStart       (const json& payload);
     json handleSimStep        (const json& payload);
     json handleSimPause       (const json& payload);

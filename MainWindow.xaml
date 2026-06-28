@@ -420,10 +420,25 @@
                                     <TextBlock Text="Drill" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
+                            <Button Style="{StaticResource ToolbarButton}" Click="CreateVCarveToolpath_Click" ToolTip="V-Carve Toolpath">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="V-Carve" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ToolbarButton}" Click="RunNesting_Click" ToolTip="Nest Selected Parts">
+                                <TextBlock Text="Nest" VerticalAlignment="Center"/>
+                            </Button>
+                            <Button Style="{StaticResource ToolbarButton}" Click="AddTabsToToolpath_Click" ToolTip="Add Holding Tabs">
+                                <TextBlock Text="Tabs" VerticalAlignment="Center"/>
+                            </Button>
+                            <Button Style="{StaticResource ToolbarButton}" Click="OptimizeToolpaths_Click" ToolTip="Optimize Toolpaths">
+                                <TextBlock Text="Optimize" VerticalAlignment="Center"/>
+                            </Button>
+                            <Button Style="{StaticResource ToolbarButton}" Click="RunCollisionCheck_Click" ToolTip="Collision Check">
+                                <TextBlock Text="Collision" VerticalAlignment="Center"/>
+                            </Button>
                             
                             <Border Width="1" Background="{StaticResource BorderSubtleBrush}" Margin="12,4"/>
-                            
-                            <!-- Tool Selection -->
                             <TextBlock Text="Tool:" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11" 
                                        VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <ComboBox x:Name="QuickToolCombo" Width="160" Height="28" VerticalAlignment="Center"

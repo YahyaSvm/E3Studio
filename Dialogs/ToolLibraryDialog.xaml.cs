@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -328,8 +332,16 @@ public partial class ToolLibraryDialog : Window
         {
             try
             {
-                // TODO: Implement tool import
-                MessageBox.Show("Tool import coming soon!", "Import Tools", MessageBoxButton.OK, MessageBoxImage.Information);
+                var json = File.ReadAllText(dialog.FileName);
+                var imported = JsonSerializer.Deserialize<List<Tool>>(json);
+                if (imported == null || imported.Count == 0)
+                    throw new InvalidOperationException("No tools found in file.");
+                _tools.AddRange(imported);
+                if (SettingsManager.Current != null)
+                    SettingsManager.Current.Tools = _tools;
+                RefreshToolList();
+                MessageBox.Show($"Imported {imported.Count} tool(s).", "Import Tools",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {

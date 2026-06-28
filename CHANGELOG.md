@@ -7,16 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-06-29
+
 ### Added
-- Cross-platform build support (Linux, macOS, Windows)
-- Docker container support with multi-stage builds
-- GitHub Actions CI/CD for all platforms
-- WebSocket API documentation
-- Architecture documentation
+- Web UI tool, simulation, and G-Code export panels
+- C++ Drilling and Threading operations; full operation engine wiring
+- Tool WebSocket API (`tool.add`, `tool.list`, `tool.update`, `tool.remove`)
+- xUnit test project for CAM engines
+- Project serialization for models and machine configuration
+
+### Fixed
+- GitHub Actions Windows release packaging path (`build/bin/Release`)
+- CI test command now runs `tests/E3Studio.Tests`
+- Disabled macOS Intel CI job blocked by runner queue timeouts
+- Docker release job skips when `DOCKERHUB_TOKEN` is not configured
+- WPF CAM toolbar integrations (V-Carve, nesting, tabs, optimize, collision)
+- Post-processor and tool library JSON import/export
 
 ### Changed
-- Migrated build system to support Linux/macOS natively
-- Updated README with cross-platform instructions
+- Docker container starts backend and serves the built web UI
 
 ---
 

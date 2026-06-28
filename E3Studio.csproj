@@ -16,4 +16,8 @@
     <PackageReference Include="System.IO.Ports" Version="9.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+  </ItemGroup>
+
 </Project>

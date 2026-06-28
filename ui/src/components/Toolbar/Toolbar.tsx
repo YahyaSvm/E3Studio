@@ -68,7 +68,12 @@ export default function Toolbar() {
         <span className="text-sm font-semibold text-white/80 hidden md:block">Studio</span>
       </div>
 
-      <ToolbarButton icon={<FilePlus size={16} />} label={t('toolbar.new')} onClick={() => ws.send('project.new', { name: t('toolbar.new_project') })} />
+      <ToolbarButton icon={<FilePlus size={16} />} label={t('toolbar.new')} onClick={async () => {
+        await ws.send('project.new', { name: t('toolbar.new_project') })
+        const data = await ws.send('project.get')
+        useStore.getState().setProjectFromServer(data)
+        useStore.getState().setProjectName(data?.name ?? t('toolbar.new_project'))
+      }} />
       <ToolbarButton icon={<FolderOpen size={16} />} label={t('toolbar.open')} onClick={openFile} />
       <ToolbarButton icon={<Save size={16} />} label={t('toolbar.save')} onClick={saveProject} />
 
@@ -80,9 +85,19 @@ export default function Toolbar() {
         onClick={() => setActivePanel('operations')}
       />
       <ToolbarButton
+        icon={<Box size={16} />} label={t('toolbar.tools')}
+        active={activePanel === 'tools'}
+        onClick={() => setActivePanel('tools')}
+      />
+      <ToolbarButton
         icon={<Activity size={16} />} label={t('toolbar.simulation')}
         active={activePanel === 'simulation'}
         onClick={() => setActivePanel('simulation')}
+      />
+      <ToolbarButton
+        icon={<Save size={16} />} label={t('toolbar.export')}
+        active={activePanel === 'export'}
+        onClick={() => setActivePanel('export')}
       />
       <ToolbarButton
         icon={<Cpu size={16} />} label={t('toolbar.ai')}

@@ -85,7 +85,7 @@ export interface UIState {
   aiPredictions: Record<string, AIPrediction>
 
   // UI
-  activePanel: 'operations' | 'tools' | 'simulation' | 'ai'
+  activePanel: 'operations' | 'tools' | 'simulation' | 'export' | 'ai'
   viewportMode: '3d' | 'simulation'
   isLoading: boolean
   loadingMessage: string
@@ -93,6 +93,9 @@ export interface UIState {
 
   // Actions
   setProjectName: (name: string) => void
+  addTool: (tool: Tool) => void
+  removeTool: (id: string) => void
+  setProjectFromServer: (data: any) => void
   addModel: (model: Model) => void
   addOperation: (op: Operation) => void
   updateOperation: (id: string, updates: Partial<Operation>) => void
@@ -130,6 +133,34 @@ export const useStore = create<UIState>()(
     notifications: [],
 
     setProjectName: (name) => set((s) => { s.projectName = name }),
+
+    addTool: (tool) => set((s) => { s.tools.push(tool) }),
+
+    removeTool: (id) => set((s) => { s.tools = s.tools.filter(t => t.id !== id) }),
+
+    setProjectFromServer: (data) => set((s) => {
+      s.projectName = data.name ?? s.projectName
+      s.hasProject = true
+      s.tools = (data.toolLibrary ?? []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        diameter: t.diameter ?? 6,
+        type: t.typeName ?? 'FlatEndmill',
+      }))
+      s.operations = (data.operations ?? []).map((op: any) => ({
+        id: op.id,
+        name: op.name,
+        type: op.typeName ?? 'Pocket2D',
+        toolId: op.toolId ?? '',
+        feedrateXY: op.feedrateXY ?? 1200,
+        feedrateZ: op.feedrateZ ?? 400,
+        spindleSpeed: op.spindleSpeed ?? 8000,
+        depthOfCut: op.depthOfCut ?? 2,
+        stepover: op.stepover ?? 4,
+        isDirty: op.isDirty ?? true,
+        toolpathId: op.toolpathId,
+      }))
+    }),
 
     addModel: (model) => set((s) => { s.models.push(model) }),
 

@@ -65,17 +65,19 @@ jobs:
         run: dotnet publish E3Studio.csproj -c Release -o publish /p:Deterministic=false
 
       - name: Package Release
+        shell: pwsh
         run: |
           $version = "${{ github.ref_name }}" -replace '^v',''
           $dir = "E3Studio-$version-win-x64"
-          New-Item -ItemType Directory -Force -Path $dir
-          Copy-Item "build/${{ env.BUILD_TYPE }}/E3Studio.exe" "$dir/"
-          Copy-Item "build/${{ env.BUILD_TYPE }}/*.dll" "$dir/" -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Copy-Item "build/bin/${{ env.BUILD_TYPE }}/E3Studio.exe" "$dir/" -ErrorAction Stop
+          Copy-Item "build/bin/${{ env.BUILD_TYPE }}/*.dll" "$dir/" -ErrorAction SilentlyContinue
           Copy-Item -Recurse "ui/dist" "$dir/ui"
+          Copy-Item -Recurse "publish" "$dir/desktop"
           Copy-Item "launch.ps1" "$dir/"
           Copy-Item "LICENSE" "$dir/"
           Copy-Item "README.md" "$dir/"
-          Compress-Archive -Path $dir -DestinationPath "$dir.zip"
+          Compress-Archive -Path $dir -DestinationPath "$dir.zip" -Force
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
@@ -219,6 +221,7 @@ jobs:
     name: Release Docker Image
     runs-on: ubuntu-22.04
     needs: [release-linux]
+    if: ${{ secrets.DOCKERHUB_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 

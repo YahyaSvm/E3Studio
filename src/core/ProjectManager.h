@@ -128,6 +128,8 @@ public:
 
     // Takım CRUD
     std::string addTool(Tool tool);
+    bool removeTool(const std::string& id);
+    bool updateTool(const std::string& id, Tool tool);
     std::optional<Tool> findTool(const std::string& id) const;
 
     // Model referans yönetimi

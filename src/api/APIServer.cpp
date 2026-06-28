@@ -20,6 +20,7 @@ APIServer::APIServer() {
             {"type", "toolpath.generated"},
             {"payload", {
                 {"operationId",      e.operationId},
+                {"toolpathId",       e.toolpathId},
                 {"pointCount",       e.pointCount},
                 {"estimatedMinutes", e.estimatedTime}
             }}
