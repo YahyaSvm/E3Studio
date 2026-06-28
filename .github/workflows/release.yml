@@ -221,7 +221,6 @@ jobs:
     name: Release Docker Image
     runs-on: ubuntu-22.04
     needs: [release-linux]
-    if: ${{ secrets.DOCKERHUB_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -229,16 +228,20 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
+        id: docker_login
         uses: docker/login-action@v3
         with:
           username: yahyasvm
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+        continue-on-error: true
 
       - name: Extract version
+        if: steps.docker_login.outcome == 'success'
         id: version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
       - name: Build and Push Docker Image
+        if: steps.docker_login.outcome == 'success'
         uses: docker/build-push-action@v5
         with:
           context: .
