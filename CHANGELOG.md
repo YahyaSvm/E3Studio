@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Project serialization for models and machine configuration
 
 ### Fixed
+- C++ build: add missing `EventBus.h` include in `MessageHandler.cpp` (CI failure on all platforms)
 - GitHub Actions Windows release packaging path (`build/bin/Release`)
 - CI test command now runs `tests/E3Studio.Tests`
 - Disabled macOS Intel CI job blocked by runner queue timeouts

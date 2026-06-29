@@ -2,6 +2,7 @@
 #include "APIServer.h"
 #include "../core/Logger.h"
 #include "../core/ProjectManager.h"
+#include "../core/EventBus.h"
 #include "../toolpath/ToolpathEngine.h"
 #include "../postprocessor/GCodeGenerator.h"
 #include "../ai/CuttingParameterPredictor.h"
